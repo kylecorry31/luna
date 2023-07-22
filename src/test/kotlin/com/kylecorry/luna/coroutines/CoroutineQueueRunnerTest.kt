@@ -83,10 +83,14 @@ class CoroutineQueueRunnerTest {
             task1Complete = true
         }
 
+        delay(10)
+
         runner.enqueue {
             delay(50)
             task2Complete = true
         }
+
+        delay(10)
 
         runner.enqueue {
             delay(50)
@@ -113,10 +117,14 @@ class CoroutineQueueRunnerTest {
             task1Complete = true
         }
 
+        delay(10)
+
         runner.enqueue {
             delay(50)
             task2Complete = true
         }
+
+        delay(10)
 
         runner.enqueue {
             delay(50)

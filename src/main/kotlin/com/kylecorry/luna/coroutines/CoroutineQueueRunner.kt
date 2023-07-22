@@ -1,6 +1,7 @@
 package com.kylecorry.luna.coroutines
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -11,7 +12,7 @@ class CoroutineQueueRunner(
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val ignoreExceptions: Boolean = false
 ) {
-    private var taskChannel = Channel<suspend () -> Unit>(queueSize)
+    private var taskChannel = Channel<suspend () -> Unit>(queueSize, BufferOverflow.DROP_LATEST)
     private var consumerJob: Job? = null
     private var isRunningTask = false
     private val mutex = Mutex()
