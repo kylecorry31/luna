@@ -49,8 +49,7 @@ class TaskRunner(
 
     suspend fun replace(task: suspend () -> Unit) {
         replaceMutex.withLock {
-            cancel()
-            checkConsumer()
+            cancelAndJoin()
             enqueue(task)
         }
     }
@@ -65,8 +64,13 @@ class TaskRunner(
         return shouldEnqueue
     }
 
-    suspend fun cancel() {
+    suspend fun cancelAndJoin() {
         consumerJob?.cancelAndJoin()
+        taskChannel.close()
+    }
+
+    fun cancel(){
+        consumerJob?.cancel()
         taskChannel.close()
     }
 

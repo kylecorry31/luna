@@ -63,7 +63,7 @@ class TaskRunnerTest {
             delay(50)
             task1Complete = true
         }
-        runner.cancel()
+        runner.cancelAndJoin()
 
         delay(150)
 
@@ -123,7 +123,7 @@ class TaskRunnerTest {
             task3Complete = true
         }
 
-        runner.cancel()
+        runner.cancelAndJoin()
 
         delay(200)
 
@@ -206,7 +206,7 @@ class TaskRunnerTest {
             task1Complete = true
         }
 
-        runner.cancel()
+        runner.cancelAndJoin()
 
         runner.enqueue {
             delay(50)
