@@ -1,5 +1,5 @@
-# Tasks
-An Kotlin library for running tasks.
+# Luna
+A library of useful Kotlin utilities.
 
 ## Installation (Gradle)
 ```gradle
@@ -8,6 +8,6 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.kylecorry31:tasks:<version>'
+    implementation 'com.github.kylecorry31:luna:<version>'
 }
 ```

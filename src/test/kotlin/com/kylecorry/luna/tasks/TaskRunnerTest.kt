@@ -1,4 +1,4 @@
-package com.kylecorry.tasks
+package com.kylecorry.luna.tasks
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking

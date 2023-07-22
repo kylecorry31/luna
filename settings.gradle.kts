@@ -1,3 +1,3 @@
 
-rootProject.name = "tasks"
+rootProject.name = "luna"
 

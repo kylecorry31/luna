@@ -12,7 +12,7 @@ afterEvaluate {
         publications {
             create<MavenPublication>("release") {
                 groupId = group.toString()
-                artifactId = "tasks"
+                artifactId = "luna"
                 version = version
                 from(components["java"])
             }
