@@ -1,11 +1,11 @@
-package com.kylecorry.luna.tasks
+package com.kylecorry.luna.coroutines
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-class TaskRunner(
+class CoroutineQueueRunner(
     private val queueSize: Int = 1,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default,

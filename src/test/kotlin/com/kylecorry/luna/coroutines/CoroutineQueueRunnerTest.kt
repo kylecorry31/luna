@@ -1,15 +1,15 @@
-package com.kylecorry.luna.tasks
+package com.kylecorry.luna.coroutines
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
-class TaskRunnerTest {
+class CoroutineQueueRunnerTest {
 
     @Test
     fun testReplace() = runBlocking {
-        val runner = TaskRunner()
+        val runner = CoroutineQueueRunner()
 
         var task1Complete = false
         var task2Complete = false
@@ -32,7 +32,7 @@ class TaskRunnerTest {
 
     @Test
     fun testSkipIfRunning() = runBlocking {
-        val runner = TaskRunner()
+        val runner = CoroutineQueueRunner()
 
         var task1Complete = false
         var task2Complete = false
@@ -55,7 +55,7 @@ class TaskRunnerTest {
 
     @Test
     fun testCancel() = runBlocking {
-        val runner = TaskRunner()
+        val runner = CoroutineQueueRunner()
 
         var task1Complete = false
 
@@ -72,7 +72,7 @@ class TaskRunnerTest {
 
     @Test
     fun testEnqueue() = runBlocking {
-        val runner = TaskRunner(1)
+        val runner = CoroutineQueueRunner(1)
 
         var task1Complete = false
         var task2Complete = false
@@ -102,7 +102,7 @@ class TaskRunnerTest {
 
     @Test
     fun testCancelWithQueue() = runBlocking {
-        val runner = TaskRunner(1)
+        val runner = CoroutineQueueRunner(1)
 
         var task1Complete = false
         var task2Complete = false
@@ -134,7 +134,7 @@ class TaskRunnerTest {
 
     @Test
     fun testRunWithExceptionNotIgnored() = runBlocking {
-        val runner = TaskRunner(2)
+        val runner = CoroutineQueueRunner(2)
 
         var task1Complete = false
         var task2Complete = false
@@ -165,7 +165,7 @@ class TaskRunnerTest {
 
     @Test
     fun testRunWithExceptionsIgnored() = runBlocking {
-        val runner = TaskRunner(2, ignoreExceptions = true)
+        val runner = CoroutineQueueRunner(2, ignoreExceptions = true)
 
         var task1Complete = false
         var task2Complete = false
@@ -196,7 +196,7 @@ class TaskRunnerTest {
 
     @Test
     fun canEnqueueAfterCancel() = runBlocking {
-        val runner = TaskRunner(1)
+        val runner = CoroutineQueueRunner(1)
 
         var task1Complete = false
         var task2Complete = false
