@@ -1,86 +1,79 @@
 package com.kylecorry.tasks
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 class TaskRunner(
-    private val queueSize: Int = 0,
+    private val queueSize: Int = 1,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val ignoreExceptions: Boolean = false
 ) {
-
-    private val queue = mutableListOf<suspend () -> Unit>()
-    private var job: Job? = null
+    private var taskChannel = Channel<suspend () -> Unit>(queueSize)
+    private var consumerJob: Job? = null
+    private var isRunningTask = false
     private val mutex = Mutex()
+    private val replaceMutex = Mutex()
 
-    suspend fun enqueue(task: suspend () -> Unit) {
-        mutex.withLock {
-            // If the queue is empty and there is no running task, run the task immediately
-            if ((queueSize == 0 && job?.isActive != true) || queue.size < queueSize) {
-                queue.add(task)
+    init {
+        launchConsumer()
+    }
+
+    private fun launchConsumer() {
+        consumerJob?.cancel() // cancel the existing consumer job
+        consumerJob = scope.launch {
+            for (task in taskChannel) {
+                withContext(dispatcher) {
+                    try {
+                        mutex.withLock { isRunningTask = true }
+                        task.invoke()
+                    } catch (e: Exception) {
+                        if (!ignoreExceptions) {
+                            throw e
+                        }
+                    } finally {
+                        mutex.withLock { isRunningTask = false }
+                    }
+                }
             }
-            Unit
         }
+    }
 
-        onTaskAdded()
+    suspend fun enqueue(task: suspend () -> Unit): Boolean {
+        checkConsumer()
+        val result = taskChannel.trySend(task)
+        return result.isSuccess
     }
 
     suspend fun replace(task: suspend () -> Unit) {
-        cancelAsync()
-        enqueue(task)
-    }
-
-    suspend fun skipIfRunning(task: suspend () -> Unit) {
-        val shouldEnqueue = mutex.withLock {
-            queue.isEmpty() && job?.isActive != true
-        }
-        if (shouldEnqueue) {
+        replaceMutex.withLock {
+            cancel()
+            checkConsumer()
             enqueue(task)
         }
     }
 
-    fun cancel() = runBlocking {
-        cancelAsync()
-    }
-
-    suspend fun cancelAsync() {
-        mutex.withLock {
-            job?.cancel()
-            job = null
-            queue.clear()
+    @OptIn(ExperimentalCoroutinesApi::class)
+    suspend fun skipIfRunning(task: suspend () -> Unit): Boolean {
+        checkConsumer()
+        val shouldEnqueue = mutex.withLock { !isRunningTask && taskChannel.isEmpty }
+        if (shouldEnqueue) {
+            enqueue(task)
         }
+        return shouldEnqueue
     }
 
-    private suspend fun processNextTask() {
-        mutex.withLock {
-            // A task is already running
-            if (job?.isActive == true) {
-                return@withLock
-            }
-            val task = queue.removeFirstOrNull()
-            if (task != null) {
-                runTask(task)
-            }
+    suspend fun cancel() {
+        consumerJob?.cancelAndJoin()
+        taskChannel.close()
+    }
+
+    private fun checkConsumer() {
+        if (consumerJob?.isActive != true) {
+            taskChannel = Channel(queueSize)
+            launchConsumer()
         }
-    }
-
-    private fun runTask(task: suspend () -> Unit) {
-        job = scope.launch(dispatcher) {
-            try {
-                task.invoke()
-            } catch (e: Exception) {
-                if (!ignoreExceptions) {
-                    throw e
-                }
-            }
-            job = null
-            scope.launch { processNextTask() }
-        }
-    }
-
-    private suspend fun onTaskAdded() {
-        processNextTask()
     }
 }

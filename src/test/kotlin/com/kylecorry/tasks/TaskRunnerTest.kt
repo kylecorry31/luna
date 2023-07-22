@@ -194,4 +194,29 @@ class TaskRunnerTest {
         assertEquals(true, task3Complete)
     }
 
+    @Test
+    fun canEnqueueAfterCancel() = runBlocking {
+        val runner = TaskRunner(1)
+
+        var task1Complete = false
+        var task2Complete = false
+
+        runner.enqueue {
+            delay(50)
+            task1Complete = true
+        }
+
+        runner.cancel()
+
+        runner.enqueue {
+            delay(50)
+            task2Complete = true
+        }
+
+        delay(200)
+
+        assertEquals(false, task1Complete)
+        assertEquals(true, task2Complete)
+    }
+
 }
