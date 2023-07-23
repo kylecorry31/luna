@@ -1,9 +1,9 @@
 package com.kylecorry.luna.topics.generic
 
-import com.kylecorry.luna.optional.Optional
 import com.kylecorry.luna.topics.ITopic
+import java.util.*
 
-internal class AdapterTopic<T>(
+internal class AdapterTopic<T: Any>(
     private val baseTopic: ITopic,
     private val valueSupplier: () -> T,
     defaultValue: Optional<T> = Optional.empty()

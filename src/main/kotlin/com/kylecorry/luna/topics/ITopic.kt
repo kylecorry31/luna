@@ -11,6 +11,6 @@ interface ITopic {
     suspend fun read()
 }
 
-fun <T> ITopic.map(fn: () -> T): com.kylecorry.luna.topics.generic.ITopic<T> {
+fun <T: Any> ITopic.map(fn: () -> T): com.kylecorry.luna.topics.generic.ITopic<T> {
     return AdapterTopic(this, fn)
 }

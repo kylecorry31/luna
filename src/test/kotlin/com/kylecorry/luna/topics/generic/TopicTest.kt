@@ -1,10 +1,10 @@
 package com.kylecorry.luna.topics.generic
 
-import com.kylecorry.luna.optional.Optional
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import java.util.*
 
 class TopicTest {
 
