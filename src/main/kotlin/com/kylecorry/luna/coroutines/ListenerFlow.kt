@@ -5,12 +5,13 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
 
-abstract class ListenerFlow<T>: IFlowable<T> {
+abstract class ListenerFlow<T>(replay: Boolean = false): IFlowable<T> {
 
     private val lock = Any()
 
     private val _flow = MutableSharedFlow<T>(
-        extraBufferCapacity = 1,
+        replay = if (replay) 1 else 0,
+        extraBufferCapacity = if (replay) 0 else 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
