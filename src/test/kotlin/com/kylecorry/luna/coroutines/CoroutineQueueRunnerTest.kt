@@ -19,6 +19,8 @@ class CoroutineQueueRunnerTest {
             task1Complete = true
         }
 
+        delay(10)
+
         runner.replace {
             delay(50)
             task2Complete = true
@@ -41,6 +43,8 @@ class CoroutineQueueRunnerTest {
             delay(50)
             task1Complete = true
         }
+
+        delay(10)
 
         runner.skipIfRunning {
             delay(50)
@@ -153,11 +157,15 @@ class CoroutineQueueRunnerTest {
             task1Complete = true
         }
 
+        delay(10)
+
         runner.enqueue {
             delay(50)
             task2Complete = true
             throw Exception("Test")
         }
+
+        delay(10)
 
         runner.enqueue {
             delay(50)
@@ -184,11 +192,15 @@ class CoroutineQueueRunnerTest {
             task1Complete = true
         }
 
+        delay(10)
+
         runner.enqueue {
             delay(50)
             task2Complete = true
             throw Exception("Test")
         }
+
+        delay(10)
 
         runner.enqueue {
             delay(50)
@@ -213,6 +225,8 @@ class CoroutineQueueRunnerTest {
             delay(50)
             task1Complete = true
         }
+
+        delay(10)
 
         runner.cancelAndJoin()
 
