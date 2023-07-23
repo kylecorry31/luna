@@ -5,7 +5,12 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
 
-abstract class ListenerFlow<T>(replay: Boolean = false): IFlowable<T> {
+/**
+ * A wrapper for a flow around a listener (e.g. a sensor listener)
+ * It will start register a listener when the first flow is collected and stop listening when the last flow is collected
+ * @param replay True if the flow should replay the last value to new collectors
+ */
+abstract class ListenerFlowWrapper<T>(replay: Boolean = false) : IFlowable<T> {
 
     private val lock = Any()
 
