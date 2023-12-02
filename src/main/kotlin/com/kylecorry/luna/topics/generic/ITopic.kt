@@ -1,5 +1,6 @@
 package com.kylecorry.luna.topics.generic
 
+import com.kylecorry.luna.coroutines.IFlowable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -7,7 +8,7 @@ import java.util.*
 
 typealias Subscriber<T> = (T) -> Boolean
 
-interface ITopic<T : Any> {
+interface ITopic<T : Any>: IFlowable<T> {
     val value: Optional<T>
 
     fun subscribe(subscriber: Subscriber<T>)

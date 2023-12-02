@@ -1,5 +1,7 @@
 package com.kylecorry.luna.topics
 
+import com.kylecorry.luna.coroutines.ListenerFlowWrapper
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
@@ -45,11 +47,26 @@ class Topic(
     }
 
     fun publish() {
-        val subs = synchronized(subscribers){
+        val subs = synchronized(subscribers) {
             subscribers.toList()
         }
         subs.filter { !it.invoke() }.forEach(::unsubscribe)
     }
+
+    override val flow: Flow<Unit> = object : ListenerFlowWrapper<Unit>() {
+        override fun start() {
+            subscribe(this::onSensorUpdate)
+        }
+
+        override fun stop() {
+            unsubscribe(this::onSensorUpdate)
+        }
+
+        private fun onSensorUpdate(): Boolean {
+            emit(Unit)
+            return true
+        }
+    }.flow
 
     companion object {
 

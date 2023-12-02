@@ -1,10 +1,12 @@
 package com.kylecorry.luna.topics.generic
 
+import com.kylecorry.luna.coroutines.ListenerFlowWrapper
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.*
 import kotlin.coroutines.resume
 
-class Topic<T: Any>(
+class Topic<T : Any>(
     private val onSubscriberAdded: (count: Int, subscriber: Subscriber<T>) -> Unit = { _, _ -> },
     private val onSubscriberRemoved: (count: Int, subscriber: Subscriber<T>) -> Unit = { _, _ -> },
     defaultValue: Optional<T> = Optional.empty()
@@ -57,12 +59,27 @@ class Topic<T: Any>(
         subs.filter { !it.invoke(value) }.forEach(::unsubscribe)
     }
 
+    override val flow: Flow<T> = object : ListenerFlowWrapper<T>() {
+        override fun start() {
+            subscribe(this::onUpdate)
+        }
+
+        override fun stop() {
+            unsubscribe(this::onUpdate)
+        }
+
+        private fun onUpdate(value: T): Boolean {
+            emit(value)
+            return true
+        }
+    }.flow
+
     companion object {
 
         /**
          * Creates a topic that will start when one subscriber is added and stop when none are left
          */
-        fun <T: Any> lazy(
+        fun <T : Any> lazy(
             start: () -> Unit,
             stop: () -> Unit,
             defaultValue: Optional<T> = Optional.empty()

@@ -1,10 +1,11 @@
 package com.kylecorry.luna.topics
 
+import com.kylecorry.luna.coroutines.IFlowable
 import com.kylecorry.luna.topics.generic.AdapterTopic
 
 typealias Subscriber = () -> Boolean
 
-interface ITopic {
+interface ITopic: IFlowable<Unit> {
     fun subscribe(subscriber: Subscriber)
     fun unsubscribe(subscriber: Subscriber)
     fun unsubscribeAll()
