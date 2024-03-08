@@ -3,29 +3,28 @@ package com.kylecorry.luna.cache
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
-class ReactivityTest {
-
-
+class HooksTest {
+    
     @Test
     fun effect() {
-        val reactivity = Reactivity()
+        val hooks = Hooks()
         var count1 = 0
         var count2 = 0
 
         // First call
-        reactivity.effect("test", 1, "Test") {
+        hooks.effect("test", 1, "Test") {
             count1++
         }
 
         // No change
-        reactivity.effect("test", 1, "Test") {
+        hooks.effect("test", 1, "Test") {
             count1++
         }
 
         assertEquals(1, count1)
 
         // Change
-        reactivity.effect("test", 2, "Test") {
+        hooks.effect("test", 2, "Test") {
             count1++
         }
 
@@ -33,7 +32,7 @@ class ReactivityTest {
         assertEquals(0, count2)
 
         // New key
-        reactivity.effect("test2", 2, "Something else", 1f) {
+        hooks.effect("test2", 2, "Something else", 1f) {
             count2++
         }
 
@@ -43,11 +42,11 @@ class ReactivityTest {
 
     @Test
     fun memo() {
-        val reactivity = Reactivity()
+        val hooks = Hooks()
         var count = 0
         var count2 = 0
 
-        val value = reactivity.memo("test", 1, "Test") {
+        val value = hooks.memo("test", 1, "Test") {
             count++
             "Hello"
         }
@@ -55,7 +54,7 @@ class ReactivityTest {
         assertEquals("Hello", value)
         assertEquals(1, count)
 
-        val value2 = reactivity.memo("test", 1, "Test") {
+        val value2 = hooks.memo("test", 1, "Test") {
             count++
             "Hello2"
         }
@@ -63,7 +62,7 @@ class ReactivityTest {
         assertEquals("Hello", value2)
         assertEquals(1, count)
 
-        val value3 = reactivity.memo("test", 2, "Test") {
+        val value3 = hooks.memo("test", 2, "Test") {
             count++
             "Hello2"
         }
@@ -72,7 +71,7 @@ class ReactivityTest {
         assertEquals(2, count)
         assertEquals(0, count2)
 
-        val value4 = reactivity.memo("test2", 2, "Something else", 1f) {
+        val value4 = hooks.memo("test2", 2, "Something else", 1f) {
             count2++
             "Hello3"
         }

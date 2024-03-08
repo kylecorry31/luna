@@ -1,6 +1,6 @@
 package com.kylecorry.luna.cache
 
-class Reactivity {
+class Hooks {
 
     private val effects = mutableMapOf<String, StateEffect>()
     private val effectLock = Any()
