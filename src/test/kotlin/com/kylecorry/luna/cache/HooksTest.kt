@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class HooksTest {
-    
+
     @Test
     fun effect() {
         val hooks = Hooks()
