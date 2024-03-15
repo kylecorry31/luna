@@ -36,15 +36,33 @@ class Hooks {
         return memo.getOrPut(*values, value = value)
     }
 
-    fun resetEffects(except: List<String> = emptyList()) {
+    /**
+     * Resets effects
+     * @param keys The keys to reset, if null all effects are reset
+     * @param except The keys to not reset
+     */
+    fun resetEffects(keys: List<String>? = null, except: List<String> = emptyList()) {
         synchronized(effectLock) {
-            effects.keys.removeAll { it !in except }
+            if (keys == null) {
+                effects.keys.removeAll { it !in except }
+            } else {
+                effects.keys.removeAll { it !in except && it in keys }
+            }
         }
     }
 
-    fun resetMemos(except: List<String> = emptyList()) {
+    /**
+     * Resets memos
+     * @param keys The keys to reset, if null all memos are reset
+     * @param except The keys to not reset
+     */
+    fun resetMemos(keys: List<String>? = null, except: List<String> = emptyList()) {
         synchronized(memoLock) {
-            memos.keys.removeAll { it !in except }
+            if (keys == null) {
+                memos.keys.removeAll { it !in except }
+            } else {
+                memos.keys.removeAll { it !in except && it in keys }
+            }
         }
     }
 
