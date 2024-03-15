@@ -16,4 +16,9 @@ class MemoizedValue<T> {
         }
         cachedValue!!
     }
+
+    fun reset(): Unit = synchronized(lock) {
+        cachedValue = null
+        cachedHash = null
+    }
 }

@@ -23,4 +23,8 @@ class StateEffect {
         }
     }
 
+    fun reset(): Unit = synchronized(lock) {
+        cachedHash = null
+    }
+
 }
