@@ -82,6 +82,66 @@ class HooksTest {
     }
 
     @Test
+    fun memoWithNullValue(){
+        val hooks = Hooks()
+        var count = 0
+
+        val value = hooks.memo<Int?>("test", 1, "Test") {
+            count++
+            null
+        }
+
+        assertNull(value)
+        assertEquals(1, count)
+
+        val value2 = hooks.memo<Int?>("test", 1, "Test") {
+            count++
+            null
+        }
+
+        assertNull(value2)
+        assertEquals(1, count)
+    }
+
+    @Test
+    fun memoWithNoDependencies(){
+        val hooks = Hooks()
+        var count = 0
+
+        val value = hooks.memo("test") {
+            count++
+            1
+        }
+
+        assertEquals(1, value)
+        assertEquals(1, count)
+
+        val value2 = hooks.memo("test") {
+            count++
+            1
+        }
+
+        assertEquals(1, value2)
+        assertEquals(1, count)
+    }
+
+    @Test
+    fun effectWithNoDependencies(){
+        val hooks = Hooks()
+        var count = 0
+
+        hooks.effect("test") {
+            count++
+        }
+
+        hooks.effect("test") {
+            count++
+        }
+
+        assertEquals(1, count)
+    }
+
+    @Test
     fun resetEffects() {
         val hooks = Hooks()
         var count = 0

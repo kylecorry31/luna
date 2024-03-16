@@ -15,6 +15,7 @@ class MemoizedValue<T> {
             cachedHash = hash
         }
         // This cast is safe because the value is only set in the above block - it also handles if T is nullable
+        @Suppress("UNCHECKED_CAST")
         cachedValue as T
     }
 
