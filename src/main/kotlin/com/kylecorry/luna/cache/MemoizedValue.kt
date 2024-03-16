@@ -14,7 +14,8 @@ class MemoizedValue<T> {
             cachedValue = value()
             cachedHash = hash
         }
-        cachedValue!!
+        // This cast is safe because the value is only set in the above block - it also handles if T is nullable
+        cachedValue as T
     }
 
     fun reset(): Unit = synchronized(lock) {
