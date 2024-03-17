@@ -1,5 +1,8 @@
 package com.kylecorry.luna.cache
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
@@ -82,7 +85,7 @@ class HooksTest {
     }
 
     @Test
-    fun memoWithNullValue(){
+    fun memoWithNullValue() {
         val hooks = Hooks()
         var count = 0
 
@@ -104,7 +107,7 @@ class HooksTest {
     }
 
     @Test
-    fun memoWithNoDependencies(){
+    fun memoWithNoDependencies() {
         val hooks = Hooks()
         var count = 0
 
@@ -126,7 +129,7 @@ class HooksTest {
     }
 
     @Test
-    fun effectWithNoDependencies(){
+    fun effectWithNoDependencies() {
         val hooks = Hooks()
         var count = 0
 
@@ -246,6 +249,109 @@ class HooksTest {
 
         assertEquals(3, count)
         assertEquals(2, count2)
+    }
+
+    @Test
+    fun state() = runBlocking {
+        val delayTime = 100L
+        var count = 0
+        val hooks = Hooks(
+            stateDispatcher = Dispatchers.Default,
+            stateThrottleMs = 0,
+            stateTriggerOnStart = false
+        ) {
+            count++
+        }
+        var state by hooks.state(1)
+
+        hooks.startStateUpdates()
+
+        state = 2
+        delay(delayTime)
+        assertEquals(1, count)
+
+        // No change to state
+        state = 2
+        delay(delayTime)
+        assertEquals(1, count)
+
+        state = 1
+        delay(delayTime)
+        assertEquals(2, count)
+
+        hooks.stopStateUpdates()
+
+        // Updates are stopped
+        state = 2
+        delay(delayTime)
+        assertEquals(2, count)
+    }
+
+    @Test
+    fun stateThrottle() = runBlocking {
+        val delayTime = 100L
+        var count = 0
+        val hooks = Hooks(
+            stateDispatcher = Dispatchers.Default,
+            stateThrottleMs = 50,
+            stateTriggerOnStart = false
+        ) {
+            count++
+        }
+        var state by hooks.state(1)
+
+        hooks.startStateUpdates()
+
+        state = 1
+        state = 3
+        delay(delayTime)
+        assertEquals(1, count)
+
+        state = 2
+        delay(delayTime)
+        assertEquals(2, count)
+
+        hooks.stopStateUpdates()
+    }
+
+    @Test
+    fun stateWithInitialUpdate() = runBlocking {
+        val delayTime = 100L
+        var count = 0
+        val hooks = Hooks(
+            stateDispatcher = Dispatchers.Default,
+            stateThrottleMs = 10,
+            stateTriggerOnStart = true
+        ) {
+            count++
+        }
+
+        hooks.startStateUpdates()
+
+        delay(delayTime)
+        assertEquals(1, count)
+
+        hooks.stopStateUpdates()
+    }
+
+    @Test
+    fun stateWithoutInitialUpdate() = runBlocking {
+        val delayTime = 100L
+        var count = 0
+        val hooks = Hooks(
+            stateDispatcher = Dispatchers.Default,
+            stateThrottleMs = 10,
+            stateTriggerOnStart = false
+        ) {
+            count++
+        }
+
+        hooks.startStateUpdates()
+
+        delay(delayTime)
+        assertEquals(0, count)
+
+        hooks.stopStateUpdates()
     }
 
 }

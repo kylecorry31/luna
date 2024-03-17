@@ -1,12 +1,29 @@
 package com.kylecorry.luna.cache
 
-class Hooks {
+import kotlinx.coroutines.Dispatchers
+import kotlin.coroutines.CoroutineContext
+
+/**
+ * A set of hooks for managing state
+ * @param stateDispatcher The dispatcher to use for state updates (default is main)
+ * @param stateThrottleMs The time to throttle state updates (default is 20ms)
+ * @param stateTriggerOnStart True if the state should trigger on start (default is true)
+ * @param stateOnChange The action to run when the state changes (default is no action)
+ */
+class Hooks(
+    stateDispatcher: CoroutineContext = Dispatchers.Main,
+    stateThrottleMs: Long = 20,
+    stateTriggerOnStart: Boolean = true,
+    stateOnChange: () -> Unit = {}
+) {
 
     private val effects = mutableMapOf<String, StateEffect>()
     private val effectLock = Any()
 
     private val memos = mutableMapOf<String, MemoizedValue<*>>()
     private val memoLock = Any()
+
+    private val stateManager = StateManager(stateDispatcher, stateThrottleMs, stateTriggerOnStart, stateOnChange)
 
     /**
      * Run an effect only if the state changes
@@ -37,6 +54,15 @@ class Hooks {
     }
 
     /**
+     * Create a new tracked state
+     * @param initialValue The initial value of the state
+     * @return The state
+     */
+    fun <T> state(initialValue: T): State<T> {
+        return stateManager.state(initialValue)
+    }
+
+    /**
      * Resets effects
      * @param keys The keys to reset, if null all effects are reset
      * @param except The keys to not reset
@@ -64,6 +90,20 @@ class Hooks {
                 memos.keys.removeAll { it !in except && it in keys }
             }
         }
+    }
+
+    /**
+     * Starts state updates
+     */
+    fun startStateUpdates() {
+        stateManager.start()
+    }
+
+    /**
+     * Stops state updates
+     */
+    fun stopStateUpdates() {
+        stateManager.stop()
     }
 
 }

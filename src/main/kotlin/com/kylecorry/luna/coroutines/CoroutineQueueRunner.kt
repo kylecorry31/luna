@@ -5,11 +5,12 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.coroutines.CoroutineContext
 
 class CoroutineQueueRunner(
     private val queueSize: Int = 1,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
-    private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val dispatcher: CoroutineContext = Dispatchers.Default,
     private val ignoreExceptions: Boolean = false
 ) {
     private var taskChannel = Channel<suspend () -> Unit>(queueSize, BufferOverflow.DROP_LATEST)
@@ -26,17 +27,17 @@ class CoroutineQueueRunner(
         consumerJob?.cancel() // cancel the existing consumer job
         consumerJob = scope.launch {
             for (task in taskChannel) {
-                withContext(dispatcher) {
-                    try {
-                        mutex.withLock { isRunningTask = true }
+                try {
+                    mutex.withLock { isRunningTask = true }
+                    withContext(dispatcher) {
                         task.invoke()
-                    } catch (e: Exception) {
-                        if (!ignoreExceptions) {
-                            throw e
-                        }
-                    } finally {
-                        mutex.withLock { isRunningTask = false }
                     }
+                } catch (e: Exception) {
+                    if (!ignoreExceptions) {
+                        throw e
+                    }
+                } finally {
+                    mutex.withLock { isRunningTask = false }
                 }
             }
         }
@@ -70,7 +71,7 @@ class CoroutineQueueRunner(
         taskChannel.close()
     }
 
-    fun cancel(){
+    fun cancel() {
         consumerJob?.cancel()
         taskChannel.close()
     }
