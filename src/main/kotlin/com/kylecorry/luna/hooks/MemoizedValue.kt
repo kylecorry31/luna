@@ -1,18 +1,16 @@
-package com.kylecorry.luna.cache
+package com.kylecorry.luna.hooks
 
-import com.kylecorry.luna.hash.HashUtils
+import com.kylecorry.luna.hash.HashChangeDetector
 
 class MemoizedValue<T> {
 
     private var cachedValue: T? = null
-    private var cachedHash: Int? = null
+    private val changeDetector = HashChangeDetector()
     private val lock = Any()
 
-    fun getOrPut(vararg keys: Any?, value: () -> T): T = synchronized(lock) {
-        val hash = HashUtils.hash(*keys)
-        if (cachedHash == null || cachedHash != hash) {
+    fun getOrPut(vararg dependencies: Any?, value: () -> T): T = synchronized(lock) {
+        if (changeDetector.hasChanges(dependencies)) {
             cachedValue = value()
-            cachedHash = hash
         }
         // This cast is safe because the value is only set in the above block - it also handles if T is nullable
         @Suppress("UNCHECKED_CAST")
@@ -21,6 +19,6 @@ class MemoizedValue<T> {
 
     fun reset(): Unit = synchronized(lock) {
         cachedValue = null
-        cachedHash = null
+        changeDetector.reset()
     }
 }

@@ -1,5 +1,6 @@
 package com.kylecorry.luna.cache
 
+import com.kylecorry.luna.hooks.Hooks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking

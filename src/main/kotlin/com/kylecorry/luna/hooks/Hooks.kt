@@ -1,4 +1,4 @@
-package com.kylecorry.luna.cache
+package com.kylecorry.luna.hooks
 
 import kotlinx.coroutines.Dispatchers
 import kotlin.coroutines.CoroutineContext
@@ -17,7 +17,7 @@ class Hooks(
     stateOnChange: () -> Unit = {}
 ) {
 
-    private val effects = mutableMapOf<String, StateEffect>()
+    private val effects = mutableMapOf<String, Effect>()
     private val effectLock = Any()
 
     private val memos = mutableMapOf<String, MemoizedValue<*>>()
@@ -33,7 +33,7 @@ class Hooks(
      */
     fun effect(key: String, vararg values: Any?, action: () -> Unit) {
         val effect = synchronized(effectLock) {
-            effects.getOrPut(key) { StateEffect() }
+            effects.getOrPut(key) { Effect() }
         }
         effect.runIfChanged(*values, action = action)
     }

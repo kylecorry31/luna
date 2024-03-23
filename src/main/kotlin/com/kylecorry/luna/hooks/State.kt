@@ -1,4 +1,4 @@
-package com.kylecorry.luna.cache
+package com.kylecorry.luna.hooks
 
 import kotlin.reflect.KProperty
 
