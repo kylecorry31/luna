@@ -1,4 +1,4 @@
-package com.kylecorry.luna.hash
+package com.kylecorry.luna.equality
 
 object HashUtils {
 

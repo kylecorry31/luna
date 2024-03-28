@@ -1,6 +1,6 @@
 package com.kylecorry.luna.hooks
 
-import com.kylecorry.luna.hash.HashChangeDetector
+import com.kylecorry.luna.equality.EqualityChangeDetector
 
 /**
  * An effect that runs an action if the state has changed (similar to the effect hook in React)
@@ -8,7 +8,7 @@ import com.kylecorry.luna.hash.HashChangeDetector
 class Effect {
 
     private val lock = Any()
-    private val changeDetector = HashChangeDetector()
+    private val changeDetector = EqualityChangeDetector()
 
     /**
      * Run an action if the values have changed

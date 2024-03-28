@@ -1,11 +1,11 @@
-package com.kylecorry.luna.hash
+package com.kylecorry.luna.equality
 
-class HashChangeDetector {
+class HashChangeDetector: ChangeDetector {
 
     private val lock = Any()
     private var cachedHashes: MutableList<Int>? = null
 
-    fun hasChanges(values: Array<out Any?>): Boolean = synchronized(lock) {
+    override fun hasChanges(values: Array<out Any?>): Boolean = synchronized(lock) {
         var changed = false
 
         val cached = if (cachedHashes == null) {
@@ -38,7 +38,7 @@ class HashChangeDetector {
         return changed
     }
 
-    fun reset() = synchronized(lock) {
+    override fun reset() = synchronized(lock) {
         cachedHashes = null
     }
 

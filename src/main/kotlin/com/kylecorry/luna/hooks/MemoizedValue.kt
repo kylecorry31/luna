@@ -1,11 +1,11 @@
 package com.kylecorry.luna.hooks
 
-import com.kylecorry.luna.hash.HashChangeDetector
+import com.kylecorry.luna.equality.EqualityChangeDetector
 
 class MemoizedValue<T> {
 
     private var cachedValue: T? = null
-    private val changeDetector = HashChangeDetector()
+    private val changeDetector = EqualityChangeDetector()
     private val lock = Any()
 
     fun getOrPut(vararg dependencies: Any?, value: () -> T): T = synchronized(lock) {
