@@ -7,6 +7,11 @@ plugins {
 group = "com.kylecorry"
 version = "0.3.4"
 
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
+
 afterEvaluate {
     publishing {
         publications {
