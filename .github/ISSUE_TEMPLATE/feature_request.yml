@@ -1,14 +1,42 @@
 name: Feature Request
-description: Request a new feature or suggest a change
-labels: []
+description: Request a new feature
+title: "<Replace with a short summary of the feature>"
+labels: ["feature-request"]
 body:
   - type: markdown
     attributes:
       value: |
-        To suggest a new feature, please post in the [New Feature Ideas](https://github.com/kylecorry31/Trail-Sense/issues/2590) issue and comment there instead of opening a new issue. I will create new feature issues using that chat for consistency.
-  - type: input
-    id: redirect
+        Please consider posting in the New Feature Ideas [issue](https://github.com/kylecorry31/Trail-Sense/issues/2590) or [discussion](https://github.com/kylecorry31/Trail-Sense/discussions/316) instead of logging a new issue. If you do create a new issue, I may modify your description or create my own issue as a replacement to make it easier for development.
+
+  - type: checkbox
+    id: search
     attributes:
-      label: Please post in the New Feature Ideas chat.
+      label: Search for duplicate suggestions
+      description: Have you searched for existing issues?
+      options:
+        - label: Yes, I have searched for existing issues and did not find a duplicate.
+          required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe how the new feature will work.
+    validations:
+      required: true
+  
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use case
+      description: Describe how the new feature fits into [Trail Sense's use cases](https://github.com/kylecorry31/Trail-Sense/wiki/Use-Cases)
+    validations:
+      required: true
+  
+  - type: input
+    id: tool
+    attributes:
+      label: Tool
+      description: The tool which should be extended to include the new feature. Leave blank if you are suggesting a new tool or an app-wide change.
     validations:
       required: false
