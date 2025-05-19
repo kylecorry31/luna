@@ -1,0 +1,8 @@
+name: Feature Request
+description: Request a new feature or suggest a change
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        To suggest a new feature, please post in the [New Feature Ideas](https://github.com/kylecorry31/Trail-Sense/issues/2590) issue and comment there instead of opening a new issue.

@@ -1,38 +1,8 @@
-name: Issue Report
-description: Report a bug, request a feature, or ask a question about Trail Sense.
-title: "[ISSUE] <Replace with a short summary>"
+name: Bug Report
+description: Report a bug
+title: "<Replace with a short summary of the bug>"
 labels: []
 body:
-  - type: dropdown
-    id: issue_type
-    attributes:
-      label: What type of issue is this?
-      description: Please select the type of issue you are reporting.
-      options:
-        - Bug Report
-        - Feature Request
-        - Question / Help
-    validations:
-      required: true
-
-  - type: markdown
-    attributes:
-      value: |
-        **If you have a question or need help, please do not open a new issue. Instead, post your question in the [Q&A Discussion](https://github.com/kylecorry31/Trail-Sense/discussions/2098).**
-
-        **If you want to suggest a new feature, please check the [Feature Requests Issue](https://github.com/kylecorry31/Trail-Sense/issues/2590) and comment there instead of opening a new issue.**
-
-        **If you are reporting a bug, please fill out the form below.**
-  
-  - type: input
-    id: summary
-    attributes:
-      label: Summary of the issue
-      description: A short summary of the issue.
-      placeholder: e.g., App crashes when I tap on the map
-    validations:
-      required: true
-
   - type: input
     id: download_source
     attributes:
