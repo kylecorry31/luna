@@ -5,4 +5,10 @@ body:
   - type: markdown
     attributes:
       value: |
-        To suggest a new feature, please post in the [New Feature Ideas](https://github.com/kylecorry31/Trail-Sense/issues/2590) issue and comment there instead of opening a new issue.
+        To suggest a new feature, please post in the [New Feature Ideas](https://github.com/kylecorry31/Trail-Sense/issues/2590) issue and comment there instead of opening a new issue. I will create new feature issues using that chat for consistency.
+  - type: input
+    id: redirect
+    attributes:
+      label: Please post in the New Feature Ideas chat.
+    validations:
+      required: false
