@@ -6,16 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Please consider posting in the New Feature Ideas [issue](https://github.com/kylecorry31/Trail-Sense/issues/2590) or [discussion](https://github.com/kylecorry31/Trail-Sense/discussions/316) instead of logging a new issue. If you do create a new issue, I may modify your description or create my own issue as a replacement to make it easier for development.
-
-  - type: checkbox
-    id: search
-    attributes:
-      label: Search for duplicate suggestions
-      description: Have you searched for existing issues?
-      options:
-        - label: Yes, I have searched for existing issues and did not find a duplicate.
-          required: true
+        Please consider posting in the New Feature Ideas [issue](https://github.com/kylecorry31/Trail-Sense/issues/2590) or [discussion](https://github.com/kylecorry31/Trail-Sense/discussions/316) instead of logging a new issue. If you do create a new issue, I may modify your description or create my own issue as a replacement to make it easier for development. Please search through existing issues to make sure this isn't a duplicate.
 
   - type: textarea
     id: description
@@ -40,3 +31,9 @@ body:
       description: The tool which should be extended to include the new feature. Leave blank if you are suggesting a new tool or an app-wide change.
     validations:
       required: false
+    
+  - type: textarea
+    id: background-info
+    attributes:
+      label: Background information
+      description: Include any background information that may be relevant to the feature request. This may include write-ups, links, algorithms, images, or videos that would be useful in the development of this new feature.
