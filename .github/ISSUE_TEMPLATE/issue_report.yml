@@ -1,0 +1,100 @@
+name: Issue Report
+description: Report a bug, request a feature, or ask a question about Trail Sense.
+title: "[ISSUE] <Replace with a short summary>"
+labels: []
+body:
+  - type: dropdown
+    id: issue_type
+    attributes:
+      label: What type of issue is this?
+      description: Please select the type of issue you are reporting.
+      options:
+        - Bug Report
+        - Feature Request
+        - Question / Help
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        **If you have a question or need help, please do not open a new issue. Instead, post your question in the [Q&A Discussion](https://github.com/kylecorry31/Trail-Sense/discussions/2098).**
+
+        **If you want to suggest a new feature, please check the [Feature Requests Issue](https://github.com/kylecorry31/Trail-Sense/issues/2590) and comment there instead of opening a new issue.**
+
+        **If you are reporting a bug, please fill out the form below.**
+  
+  - type: input
+    id: summary
+    attributes:
+      label: Summary of the issue
+      description: A short summary of the issue.
+      placeholder: e.g., App crashes when I tap on the map
+    validations:
+      required: true
+
+  - type: input
+    id: download_source
+    attributes:
+      label: Where did you download the app from?
+      description: Play Store, F-Droid, GitHub - Release, GitHub - Dev, GitHub - Nightly, etc.
+      placeholder: e.g., Play Store
+    validations:
+      required: false
+
+  - type: input
+    id: app_version
+    attributes:
+      label: What app version are you using?
+      description: Find this in Tools > Settings > Version.
+      placeholder: e.g., 6.10.0
+    validations:
+      required: false
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: List of diagnostic failures
+      description: Go to Tools > Diagnostics and list any failures or warnings.
+      placeholder: No failures
+    validations:
+      required: false
+
+  - type: input
+    id: android_version
+    attributes:
+      label: What Android version and device are you using?
+      description: Include Android version and make/model of your phone.
+      placeholder: e.g., Android 13, Samsung Galaxy S21
+    validations:
+      required: false
+
+  - type: input
+    id: frequency
+    attributes:
+      label: Frequency of issue
+      description: How often does this issue occur? (Always, only once, etc.)
+      placeholder: e.g., Always
+    validations:
+      required: false
+
+  - type: textarea
+    id: reproduction_steps
+    attributes:
+      label: Reproduction steps
+      description: Please describe the steps to reproduce the issue.
+      placeholder: |
+        1. Go to ...
+        2. Tap on ...
+        3. See error
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+      placeholder: The app should...
+    validations:
+      required: false
