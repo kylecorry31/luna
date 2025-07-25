@@ -23,6 +23,9 @@ class Hooks(
     private val memos = mutableMapOf<String, MemoizedValue<*>>()
     private val memoLock = Any()
 
+    private val refs = mutableMapOf<String, Ref<*>>()
+    private val refLock = Any()
+
     private val stateManager = StateManager(stateDispatcher, stateThrottleMs, stateTriggerOnStart, stateOnChange)
 
     /**
@@ -51,6 +54,19 @@ class Hooks(
             memos.getOrPut(key) { MemoizedValue<T>() }
         } as MemoizedValue<T>
         return memo.getOrPut(*values, value = value)
+    }
+
+    /**
+     * Create a new reference
+     * @param key The key for the reference (should be unique for each reference)
+     * @param initialValue The initial value of the reference
+     * @return The reference, once created the object reference will not change or trigger a state callback if the 'current' property is changed
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun <T> ref(key: String, initialValue: T): Ref<T> {
+        return synchronized(refLock) {
+            refs.getOrPut(key) { Ref(initialValue) } as Ref<T>
+        }
     }
 
     /**
@@ -88,6 +104,21 @@ class Hooks(
                 memos.keys.removeAll { it !in except }
             } else {
                 memos.keys.removeAll { it !in except && it in keys }
+            }
+        }
+    }
+
+    /**
+     * Resets references
+     * @param keys The keys to reset, if null all references are reset
+     * @param except The keys to not reset
+     */
+    fun resetRefs(keys: List<String>? = null, except: List<String> = emptyList()) {
+        synchronized(refLock) {
+            if (keys == null) {
+                refs.keys.removeAll { it !in except }
+            } else {
+                refs.keys.removeAll { it !in except && it in keys }
             }
         }
     }

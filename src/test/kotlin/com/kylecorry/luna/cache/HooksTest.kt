@@ -253,6 +253,59 @@ class HooksTest {
     }
 
     @Test
+    fun ref(){
+        val hooks = Hooks()
+
+        val ref = hooks.ref("test", 1)
+        assertEquals(1, ref.current)
+
+        ref.current = 2
+        assertEquals(2, ref.current)
+
+        val ref2 = hooks.ref("test", 1)
+        assertEquals(2, ref2.current)
+        assertEquals(ref, ref2)
+
+        ref2.current = 3
+        assertEquals(3, ref.current)
+        assertEquals(3, ref2.current)
+
+        val ref3 = hooks.ref("test2", 1)
+        assertEquals(1, ref3.current)
+        assertNotEquals(ref, ref3)
+        assertNotEquals(ref2, ref3)
+    }
+
+    @Test
+    fun resetRefs() {
+        val hooks = Hooks()
+
+        val ref = hooks.ref("test", 1)
+        assertEquals(1, ref.current)
+
+        ref.current = 2
+        assertEquals(2, ref.current)
+
+        hooks.resetRefs()
+
+        val ref2 = hooks.ref("test", 1)
+        assertEquals(1, ref2.current)
+        assertNotEquals(ref, ref2)
+
+        ref2.current = 3
+        assertEquals(3, ref2.current)
+
+        hooks.resetRefs(keys = listOf("test"))
+
+        val ref3 = hooks.ref("test", 1)
+        assertEquals(1, ref3.current)
+
+        hooks.resetRefs(except = listOf("test"))
+        val ref4 = hooks.ref("test", 2)
+        assertEquals(1, ref4.current)
+    }
+
+    @Test
     fun state() = runBlocking {
         val delayTime = 100L
         var count = 0
