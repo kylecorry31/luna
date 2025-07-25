@@ -25,7 +25,7 @@ fun InputStream.readLine(): String {
 }
 
 fun InputStream.readText(charset: Charset = Charsets.UTF_8): String {
-    return readAllBytes().toString(charset)
+    return readBytes().toString(charset)
 }
 
 fun OutputStream.write(str: String, charset: Charset = Charsets.UTF_8) {
