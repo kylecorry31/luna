@@ -72,7 +72,7 @@ class StructTest {
         struct.writeDouble(5, 1.234)
         struct.writeBoolean(6, true)
 
-        assertEquals(0x7F.toByte(), struct.readSingleByte(0))
+        assertEquals(0x7F.toByte(), struct.readByte(0))
         assertEquals(0x7FFFFFFF, struct.readInt(1))
         assertEquals(0x7FFFFFFFFFFFFFFF, struct.readLong(2))
         assertEquals('a', struct.readChar(3))
@@ -84,8 +84,29 @@ class StructTest {
     @Test
     fun testBytes() {
         val struct = createStruct(4)
-        struct.writeBytes(0, byteArrayOf(0x7F, 0x7F, 0x7F, 0x7F))
-        assertArrayEquals(byteArrayOf(0x7F, 0x7F, 0x7F, 0x7F), struct.readBytes(0, 4))
+        struct.writeByteArray(0, byteArrayOf(0x7F, 0x7F, 0x7F, 0x7F))
+        assertArrayEquals(byteArrayOf(0x7F, 0x7F, 0x7F, 0x7F), struct.readByteArray(0))
+
+        struct.writeByteArray(0, byteArrayOf(0x01, 0x02))
+        assertArrayEquals(byteArrayOf(0x01, 0x02, 0, 0), struct.readByteArray(0))
+
+        assertThrows(IllegalArgumentException::class.java) {
+            struct.writeByteArray(0, byteArrayOf(0x01, 0x02, 0x03, 0x04, 0x05))
+        }
+    }
+
+    @Test
+    fun testString() {
+        val struct = createStruct(5)
+        struct.writeString(0, "Hi")
+        assertEquals("Hi", struct.readString(0))
+
+        struct.writeString(0, "Hello")
+        assertEquals("Hello", struct.readString(0))
+
+        assertThrows(IllegalArgumentException::class.java) {
+            struct.writeString(0, "Hello!")
+        }
     }
 
     @Test
@@ -96,6 +117,67 @@ class StructTest {
         }
         assertThrows(IndexOutOfBoundsException::class.java) {
             struct.readByte(1)
+        }
+    }
+
+    @Test
+    fun wrongSize() {
+        val struct = createStruct(0)
+        // Byte
+        assertThrows(IllegalArgumentException::class.java) {
+            struct.writeByte(0, 0x7F)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            struct.readByte(0)
+        }
+        // Int
+        assertThrows(IllegalArgumentException::class.java) {
+            struct.writeInt(0, 0x7FFFFFFF)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            struct.readInt(0)
+        }
+        // Long
+        assertThrows(IllegalArgumentException::class.java) {
+            struct.writeLong(0, 0x7FFFFFFFFFFFFFFF)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            struct.readLong(0)
+        }
+        // Short
+        assertThrows(IllegalArgumentException::class.java) {
+            struct.writeShort(0, 0x7FFF)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            struct.readShort(0)
+        }
+        // Char
+        assertThrows(IllegalArgumentException::class.java) {
+            struct.writeChar(0, 'a')
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            struct.readChar(0)
+        }
+        // Float
+        assertThrows(IllegalArgumentException::class.java) {
+            struct.writeFloat(0, 1.234f)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            struct.readFloat(0)
+        }
+        // Double
+        assertThrows(IllegalArgumentException::class.java) {
+            struct.writeDouble(0, 1.234)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            struct.readDouble(0)
+        }
+        // Boolean
+        assertThrows(IllegalArgumentException::class.java) {
+            struct.writeBoolean(0, true)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            struct.readBoolean(0)
         }
     }
 
