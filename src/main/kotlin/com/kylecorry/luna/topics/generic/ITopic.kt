@@ -101,3 +101,12 @@ fun <T: Any> ITopic<T>.replay(): ITopic<T> {
         result.publish(value)
     }
 }
+
+fun <T: Any> ITopic<T>.getOrNull(): T? {
+    val current = value
+    return if (current.isPresent) {
+        current.get()
+    } else {
+        null
+    }
+}

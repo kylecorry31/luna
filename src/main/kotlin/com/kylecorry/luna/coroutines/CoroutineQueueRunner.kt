@@ -11,9 +11,10 @@ class CoroutineQueueRunner(
     private val queueSize: Int = 1,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
     private val dispatcher: CoroutineContext = Dispatchers.Default,
-    private val ignoreExceptions: Boolean = false
+    private val ignoreExceptions: Boolean = false,
+    queuePolicy: BufferOverflow = BufferOverflow.DROP_LATEST
 ) {
-    private var taskChannel = Channel<suspend () -> Unit>(queueSize, BufferOverflow.DROP_LATEST)
+    private var taskChannel = Channel<suspend () -> Unit>(queueSize, queuePolicy)
     private var consumerJob: Job? = null
     private var isRunningTask = false
     private val mutex = Mutex()

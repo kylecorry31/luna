@@ -249,4 +249,13 @@ class TopicTest {
         assertEquals(6, value)
     }
 
+    @Test
+    fun canGetOrNull() {
+        val topic = Topic<Int>()
+        assertEquals(null, topic.getOrNull())
+
+        topic.publish(5)
+        assertEquals(5, topic.getOrNull())
+    }
+
 }
