@@ -5,7 +5,7 @@ import kotlin.coroutines.CoroutineContext
 
 class StateManager(
     observeOn: CoroutineContext,
-    private val throttleTimeMs: Long,
+    private var throttleTimeMs: Long,
     private val shouldTriggerOnStart: Boolean = true,
     private val onChange: () -> Unit
 ) {
@@ -46,6 +46,10 @@ class StateManager(
 
     fun <T> state(initialValue: T): State<T> {
         return State(initialValue, this::scheduleChange)
+    }
+
+    fun setThrottle(milliseconds: Long){
+        throttleTimeMs = milliseconds
     }
 
     private fun scheduleChange() {

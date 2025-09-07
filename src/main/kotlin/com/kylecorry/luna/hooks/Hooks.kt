@@ -28,6 +28,10 @@ class Hooks(
 
     private val stateManager = StateManager(stateDispatcher, stateThrottleMs, stateTriggerOnStart, stateOnChange)
 
+    fun setStateThrottle(milliseconds: Long) {
+        stateManager.setThrottle(milliseconds)
+    }
+
     /**
      * Run an effect only if the state changes
      * @param key The key for the effect (should be unique for each effect)
