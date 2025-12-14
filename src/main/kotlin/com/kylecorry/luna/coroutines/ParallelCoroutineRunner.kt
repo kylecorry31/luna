@@ -1,56 +1,25 @@
 package com.kylecorry.luna.coroutines
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.joinAll
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
-
-class ParallelCoroutineRunner(maxParallel: Int = 8) {
-
-    private val semaphore = Semaphore(maxParallel)
-    private val coroutineScope = CoroutineScope(Dispatchers.Default + Job())
+class ParallelCoroutineRunner(private val maxParallel: Int = 8) {
 
     suspend fun run(coroutines: List<suspend () -> Any>) {
-        val jobs = mutableListOf<Job>()
-
-        for (coroutine in coroutines) {
-            jobs.add(coroutineScope.launch {
-                semaphore.withPermit { coroutine() }
-            })
-        }
-
-        jobs.joinAll()
+        Parallel.forEach(coroutines, maxParallel)
     }
 
     suspend fun <R> run(items: List<R>, coroutine: suspend (R) -> Unit) {
-        run(items.map { { coroutine(it) } })
+        Parallel.forEach(items, maxParallel, coroutine)
     }
 
     suspend fun <T> map(coroutines: List<suspend () -> T>): List<T> {
-        val items = mutableListOf<Pair<Int, T>>()
-        val lock = Any()
-
-        run(coroutines.mapIndexed { index, coroutine ->
-            {
-                val item = coroutine()
-                synchronized(lock) {
-                    items.add(index to item)
-                }
-            }
-        })
-
-        return items.sortedBy { it.first }.map { it.second }
+        return Parallel.map(coroutines, maxParallel)
     }
 
     suspend fun <T> mapFunctions(functions: List<() -> T>): List<T> {
-        return map(functions.map { { it() } })
+        return Parallel.mapFunctions(functions, maxParallel)
     }
 
     suspend fun <R, T> map(items: List<R>, coroutine: suspend (R) -> T): List<T> {
-        return map(items.map { { coroutine(it) } })
+        return Parallel.map(items, maxParallel, coroutine)
     }
 
 }

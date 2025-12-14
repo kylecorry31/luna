@@ -1,10 +1,10 @@
 plugins {
-    kotlin("jvm") version "2.1.21"
+    kotlin("jvm") version "2.2.21"
     id("java-library")
     id("com.vanniktech.maven.publish") version "0.34.0"
 }
 
-val versionName = "1.0.1"
+val versionName = "1.1.0"
 
 group = "com.kylecorry"
 version = versionName
@@ -45,7 +45,7 @@ repositories {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     testImplementation("org.junit.platform:junit-platform-runner:1.10.0")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.0")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.0")
