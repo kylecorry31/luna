@@ -4,18 +4,24 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * A coroutine safe LRU cache, designed for use with IO operations
  */
-class LRUCache<K, T>(private val size: Int? = null, private val duration: Duration? = null) {
+class LRUCache<K, T>(
+    private val size: Int? = null,
+    private val duration: Duration? = null,
+    private val useSingleLock: Boolean = false
+) {
 
-    private var values: MutableMap<K, T> = mutableMapOf()
-    private var cachedAt: MutableMap<K, Instant> = mutableMapOf()
-    private var mutex = Mutex()
+    private val values: MutableMap<K, T> = mutableMapOf()
+    private val cachedAt: MutableMap<K, Instant> = mutableMapOf()
+    private val mutexes = ConcurrentHashMap<K, Mutex>()
+    private val mutex = Mutex()
 
     suspend fun get(key: K): T? {
-        return mutex.withLock {
+        return getLock(key).withLock {
             if (hasValidCache(key)) {
                 values[key]
             } else {
@@ -25,7 +31,7 @@ class LRUCache<K, T>(private val size: Int? = null, private val duration: Durati
     }
 
     suspend fun put(key: K, value: T) {
-        mutex.withLock {
+        getLock(key).withLock {
             values[key] = value
             cachedAt[key] = Instant.now()
             removeOldest()
@@ -33,7 +39,7 @@ class LRUCache<K, T>(private val size: Int? = null, private val duration: Durati
     }
 
     suspend fun getOrPut(key: K, lookup: suspend () -> T): T {
-        return mutex.withLock {
+        return getLock(key).withLock {
             if (hasValidCache(key)) {
                 @Suppress("UNCHECKED_CAST")
                 return@withLock values[key] as T
@@ -47,9 +53,18 @@ class LRUCache<K, T>(private val size: Int? = null, private val duration: Durati
     }
 
     suspend fun invalidate(key: K) {
-        mutex.withLock {
+        getLock(key).withLock {
             values.remove(key)
             cachedAt.remove(key)
+            mutexes.remove(key)
+        }
+    }
+
+    private fun getLock(key: K): Mutex {
+        return if (useSingleLock) {
+            mutex
+        } else {
+            mutexes.computeIfAbsent(key) { Mutex() }
         }
     }
 
@@ -63,6 +78,7 @@ class LRUCache<K, T>(private val size: Int? = null, private val duration: Durati
         val oldest = cachedAt.minByOrNull { it.value }?.key ?: return
         values.remove(oldest)
         cachedAt.remove(oldest)
+        mutexes.remove(oldest)
     }
 
     private fun hasValidCache(key: K): Boolean {
