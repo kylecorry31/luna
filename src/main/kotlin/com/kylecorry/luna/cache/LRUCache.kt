@@ -15,8 +15,8 @@ class LRUCache<K, T>(
     private val useSingleLock: Boolean = false
 ) {
 
-    private val values: MutableMap<K, T> = mutableMapOf()
-    private val cachedAt: MutableMap<K, Instant> = mutableMapOf()
+    private val values = ConcurrentHashMap<K, T>()
+    private val cachedAt = ConcurrentHashMap<K, Instant>()
     private val mutexes = ConcurrentHashMap<K, Mutex>()
     private val mutex = Mutex()
 
