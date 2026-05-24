@@ -1,11 +1,10 @@
-package com.kylecorry.luna.coroutines
+package com.kylecorry.luna.cache
 
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
@@ -16,7 +15,7 @@ class CoroutineObjectPoolTest {
     fun acquireCreatesObject() = runBlocking {
         val pool = CoroutineObjectPool(maxSize = 2) { "obj" }
         val obj = pool.acquire()
-        assertEquals("obj", obj)
+        Assertions.assertEquals("obj", obj)
     }
 
     @Test
@@ -28,8 +27,8 @@ class CoroutineObjectPoolTest {
         pool.release(obj1)
         val obj2 = pool.acquire()
 
-        assertEquals(obj1, obj2)
-        assertEquals(1, created.get())
+        Assertions.assertEquals(obj1, obj2)
+        Assertions.assertEquals(1, created.get())
     }
 
     @Test
@@ -41,10 +40,10 @@ class CoroutineObjectPoolTest {
         val obj2 = pool.acquire()
         val obj3 = pool.acquire()
 
-        assertEquals(3, created.get())
-        assertEquals("obj-1", obj1)
-        assertEquals("obj-2", obj2)
-        assertEquals("obj-3", obj3)
+        Assertions.assertEquals(3, created.get())
+        Assertions.assertEquals("obj-1", obj1)
+        Assertions.assertEquals("obj-2", obj2)
+        Assertions.assertEquals("obj-3", obj3)
     }
 
     @Test
@@ -58,11 +57,11 @@ class CoroutineObjectPoolTest {
         }
 
         delay(50)
-        assertTrue(!deferred.isCompleted)
+        Assertions.assertTrue(!deferred.isCompleted)
 
         pool.release(obj1)
         val obj2 = deferred.await()
-        assertEquals("obj", obj2)
+        Assertions.assertEquals("obj", obj2)
     }
 
     @Test
@@ -76,7 +75,7 @@ class CoroutineObjectPoolTest {
         // Pool is now full (1 object), releasing another should trigger cleanup
         pool.release("extra")
 
-        assertEquals(listOf("extra"), cleaned.toList())
+        Assertions.assertEquals(listOf("extra"), cleaned.toList())
     }
 
     @Test
@@ -91,9 +90,9 @@ class CoroutineObjectPoolTest {
 
         pool.close()
 
-        assertEquals(2, cleaned.size)
-        assertTrue(cleaned.contains(obj1))
-        assertTrue(cleaned.contains(obj2))
+        Assertions.assertEquals(2, cleaned.size)
+        Assertions.assertTrue(cleaned.contains(obj1))
+        Assertions.assertTrue(cleaned.contains(obj2))
     }
 
     @Test
@@ -102,16 +101,16 @@ class CoroutineObjectPoolTest {
         val pool = CoroutineObjectPool(maxSize = 1) { "obj-${created.incrementAndGet()}" }
 
         val result = pool.use { obj ->
-            assertEquals("obj-1", obj)
+            Assertions.assertEquals("obj-1", obj)
             "result"
         }
 
-        assertEquals("result", result)
+        Assertions.assertEquals("result", result)
 
         // Object should have been released back, so acquiring again reuses it
         val obj = pool.acquire()
-        assertEquals("obj-1", obj)
-        assertEquals(1, created.get())
+        Assertions.assertEquals("obj-1", obj)
+        Assertions.assertEquals(1, created.get())
     }
 
     @Test
@@ -126,8 +125,8 @@ class CoroutineObjectPoolTest {
 
         // Object should have been released back despite the exception
         val obj = pool.acquire()
-        assertEquals("obj-1", obj)
-        assertEquals(1, created.get())
+        Assertions.assertEquals("obj-1", obj)
+        Assertions.assertEquals(1, created.get())
     }
 
     @Test
@@ -155,8 +154,8 @@ class CoroutineObjectPoolTest {
 
         jobs.awaitAll()
 
-        assertTrue(created.get() <= 3, "Created more objects than maxSize: ${created.get()}")
-        assertTrue(maxConcurrent.get() <= 3, "Exceeded concurrency limit: ${maxConcurrent.get()}")
+        Assertions.assertTrue(created.get() <= 3, "Created more objects than maxSize: ${created.get()}")
+        Assertions.assertTrue(maxConcurrent.get() <= 3, "Exceeded concurrency limit: ${maxConcurrent.get()}")
     }
 
     @Test
@@ -176,6 +175,6 @@ class CoroutineObjectPoolTest {
 
         // The slot should not be consumed by the failed creation
         val obj = pool.acquire()
-        assertEquals("obj", obj)
+        Assertions.assertEquals("obj", obj)
     }
 }

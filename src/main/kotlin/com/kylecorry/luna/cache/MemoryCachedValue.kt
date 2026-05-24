@@ -5,7 +5,11 @@ import kotlinx.coroutines.sync.withLock
 import java.time.Duration
 import java.time.Instant
 
-class MemoryCachedValue<T>(initialValue: T? = null, private val duration: Duration? = null) {
+class MemoryCachedValue<T>(
+    initialValue: T? = null,
+    private val duration: Duration? = null,
+    private val cleanup: suspend (T) -> Unit = {}
+) {
 
     private var value: T? = initialValue
     private var cachedAt = Instant.MIN
@@ -23,6 +27,7 @@ class MemoryCachedValue<T>(initialValue: T? = null, private val duration: Durati
 
     suspend fun put(value: T) {
         mutex.withLock {
+            this.value?.let { cleanup(it) }
             this.value = value
             this.cachedAt = Instant.now()
         }
@@ -35,6 +40,7 @@ class MemoryCachedValue<T>(initialValue: T? = null, private val duration: Durati
                 return@withLock lastValue
             }
             val newValue = lookup()
+            value?.let { cleanup(it) }
             value = newValue
             cachedAt = Instant.now()
             newValue
@@ -43,6 +49,7 @@ class MemoryCachedValue<T>(initialValue: T? = null, private val duration: Durati
 
     suspend fun reset() {
         mutex.withLock {
+            value?.let { cleanup(it) }
             value = null
             cachedAt = Instant.MIN
         }

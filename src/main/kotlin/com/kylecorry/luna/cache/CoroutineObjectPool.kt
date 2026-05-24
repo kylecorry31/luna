@@ -1,4 +1,4 @@
-package com.kylecorry.luna.coroutines
+package com.kylecorry.luna.cache
 
 import kotlinx.coroutines.channels.Channel
 import java.util.concurrent.atomic.AtomicInteger
