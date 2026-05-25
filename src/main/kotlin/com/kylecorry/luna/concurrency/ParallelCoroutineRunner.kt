@@ -1,4 +1,4 @@
-package com.kylecorry.luna.coroutines
+package com.kylecorry.luna.concurrency
 
 class ParallelCoroutineRunner(private val maxParallel: Int = 8) {
 

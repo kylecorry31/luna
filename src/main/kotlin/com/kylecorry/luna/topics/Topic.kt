@@ -1,6 +1,6 @@
 package com.kylecorry.luna.topics
 
-import com.kylecorry.luna.coroutines.ListenerFlowWrapper
+import com.kylecorry.luna.concurrency.ListenerFlowWrapper
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume

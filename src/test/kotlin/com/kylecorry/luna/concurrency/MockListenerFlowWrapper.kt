@@ -1,4 +1,4 @@
-package com.kylecorry.luna.coroutines
+package com.kylecorry.luna.concurrency
 
 internal class MockListenerFlowWrapper(replay: Boolean) : ListenerFlowWrapper<Int>(replay) {
 

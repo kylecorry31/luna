@@ -1,5 +1,6 @@
-package com.kylecorry.luna.locks
+package com.kylecorry.luna.concurrency.locks
 
+import com.kylecorry.luna.concurrency.locks.NoLock
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test

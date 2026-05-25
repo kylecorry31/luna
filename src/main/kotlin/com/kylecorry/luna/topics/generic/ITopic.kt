@@ -1,6 +1,6 @@
 package com.kylecorry.luna.topics.generic
 
-import com.kylecorry.luna.coroutines.IFlowable
+import com.kylecorry.luna.concurrency.IFlowable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

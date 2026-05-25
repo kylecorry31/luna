@@ -1,4 +1,4 @@
-package com.kylecorry.luna.coroutines
+package com.kylecorry.luna.concurrency
 
 import kotlinx.coroutines.ExecutorCoroutineDispatcher
 import kotlinx.coroutines.asCoroutineDispatcher

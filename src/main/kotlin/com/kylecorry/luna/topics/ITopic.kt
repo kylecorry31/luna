@@ -1,6 +1,6 @@
 package com.kylecorry.luna.topics
 
-import com.kylecorry.luna.coroutines.IFlowable
+import com.kylecorry.luna.concurrency.IFlowable
 import com.kylecorry.luna.topics.generic.AdapterTopic
 
 typealias Subscriber = () -> Boolean

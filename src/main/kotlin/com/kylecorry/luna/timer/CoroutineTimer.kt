@@ -1,6 +1,6 @@
 package com.kylecorry.luna.timer
 
-import com.kylecorry.luna.coroutines.CoroutineQueueRunner
+import com.kylecorry.luna.concurrency.CoroutineQueueRunner
 import kotlinx.coroutines.*
 import java.time.Duration
 import kotlin.coroutines.CoroutineContext

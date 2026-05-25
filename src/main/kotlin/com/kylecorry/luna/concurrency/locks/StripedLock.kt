@@ -1,4 +1,4 @@
-package com.kylecorry.luna.locks
+package com.kylecorry.luna.concurrency.locks
 
 class StripedLock(stripes: Int = DEFAULT_STRIPES) : Lock {
 
