@@ -1,6 +1,6 @@
 package com.kylecorry.luna.hooks
 
-import com.kylecorry.luna.timer.CoroutineTimer
+import com.kylecorry.luna.time.CoroutineTimer
 import kotlin.coroutines.CoroutineContext
 
 class StateManager(

@@ -1,4 +1,4 @@
-package com.kylecorry.luna.timer
+package com.kylecorry.luna.time
 
 import com.kylecorry.luna.concurrency.CoroutineQueueRunner
 import kotlinx.coroutines.*
