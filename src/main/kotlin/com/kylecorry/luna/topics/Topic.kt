@@ -35,10 +35,14 @@ class Topic(
         copy.forEach(::unsubscribe)
     }
 
-    override suspend fun read() = suspendCancellableCoroutine<Unit> { cont ->
+    override suspend fun read(isSatisfied: () -> Boolean) = suspendCancellableCoroutine { cont ->
         val callback: () -> Boolean = {
-            cont.resume(Unit)
-            false
+            if (isSatisfied()) {
+                cont.resume(Unit)
+                false
+            } else {
+                true
+            }
         }
         cont.invokeOnCancellation {
             unsubscribe(callback)

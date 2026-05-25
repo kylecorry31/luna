@@ -1,10 +1,13 @@
 package com.kylecorry.luna.topics
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import java.util.concurrent.atomic.AtomicInteger
 
 class TopicTest {
 
@@ -182,7 +185,34 @@ class TopicTest {
     }
 
     @Test
-    fun canLazilySubscribe(){
+    fun canReadWhenSatisfied() = runBlocking {
+        val counts = mutableListOf<Int>()
+        val topic = Topic(
+            { c, _ ->
+                counts.add(c)
+            },
+            { c, _ ->
+                counts.add(c)
+            }
+        )
+        val count = AtomicInteger(0)
+        val jobs = listOf(
+            launch {
+                topic.read {
+                    count.incrementAndGet() == 2
+                }
+            },
+            launch { topic.publish() },
+            launch { topic.publish() }
+        )
+        jobs.joinAll()
+
+        assertEquals(2, count.get())
+        assertEquals(listOf(1, 0), counts)
+    }
+
+    @Test
+    fun canLazilySubscribe() {
         var subscribed = false
         val subscriber1 = { true }
 
