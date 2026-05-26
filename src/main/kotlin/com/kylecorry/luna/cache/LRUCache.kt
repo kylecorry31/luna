@@ -15,14 +15,15 @@ class LRUCache<K, T>(
     private val useSingleLock: Boolean = false
 ) {
 
-    private val values = ConcurrentHashMap<K, T>()
-    private val cachedAt = ConcurrentHashMap<K, Instant>()
-    private val mutexes = ConcurrentHashMap<K, Mutex>()
+    private val values = mutableMapOf<K, T>()
+    private val cachedAt = mutableMapOf<K, Instant>()
+    private val mutexes = mutableMapOf<K, Mutex>()
     private val mutex = Mutex()
 
     suspend fun get(key: K): T? {
         return getLock(key).withLock {
             if (hasValidCache(key)) {
+                cachedAt[key] = Instant.now()
                 values[key]
             } else {
                 null
@@ -41,6 +42,7 @@ class LRUCache<K, T>(
     suspend fun getOrPut(key: K, lookup: suspend () -> T): T {
         return getLock(key).withLock {
             if (hasValidCache(key)) {
+                cachedAt[key] = Instant.now()
                 @Suppress("UNCHECKED_CAST")
                 return@withLock values[key] as T
             }
@@ -60,11 +62,13 @@ class LRUCache<K, T>(
         }
     }
 
-    private fun getLock(key: K): Mutex {
+    private suspend fun getLock(key: K): Mutex {
         return if (useSingleLock) {
             mutex
         } else {
-            mutexes.computeIfAbsent(key) { Mutex() }
+            mutex.withLock {
+                mutexes.computeIfAbsent(key) { Mutex() }
+            }
         }
     }
 
