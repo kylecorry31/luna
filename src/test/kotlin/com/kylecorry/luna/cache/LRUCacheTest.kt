@@ -1,6 +1,9 @@
 package com.kylecorry.luna.cache
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -145,5 +148,22 @@ class LRUCacheTest {
         assertEquals("1", cache.get("one"))
         assertNull(cache.get("two"))
         assertEquals("3", cache.get("three"))
+    }
+
+    @Test
+    fun concurrentAccessDoesNotFailDuringEviction() = runBlocking {
+        val cache = LRUCache<String, String>(size = 16)
+
+        val jobs = (0..<32).map { worker ->
+            launch(Dispatchers.Default) {
+                repeat(250) { iteration ->
+                    val key = "$worker-$iteration"
+                    cache.put(key, key)
+                    cache.get(key)
+                }
+            }
+        }
+
+        jobs.joinAll()
     }
 }
