@@ -4,7 +4,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Duration
 import java.time.Instant
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * A coroutine safe LRU cache, designed for use with IO operations
@@ -19,6 +18,7 @@ class LRUCache<K, T>(
     private val cachedAt = mutableMapOf<K, Instant>()
     private val mutexes = mutableMapOf<K, Mutex>()
     private val mutex = Mutex()
+    private val cleanupMutex = Mutex()
 
     suspend fun get(key: K): T? {
         return getLock(key).withLock {
@@ -72,17 +72,19 @@ class LRUCache<K, T>(
         }
     }
 
-    private fun removeOldest() {
-        if (size == null) {
-            return
+    private suspend fun removeOldest() {
+        cleanupMutex.withLock {
+            if (size == null) {
+                return
+            }
+            if (values.size <= size) {
+                return
+            }
+            val oldest = cachedAt.minByOrNull { it.value }?.key ?: return
+            values.remove(oldest)
+            cachedAt.remove(oldest)
+            mutexes.remove(oldest)
         }
-        if (values.size <= size) {
-            return
-        }
-        val oldest = cachedAt.minByOrNull { it.value }?.key ?: return
-        values.remove(oldest)
-        cachedAt.remove(oldest)
-        mutexes.remove(oldest)
     }
 
     private fun hasValidCache(key: K): Boolean {
