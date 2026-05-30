@@ -47,6 +47,9 @@ class SubscriptionTest {
         subscription.subscribe(listener2)
         waitUntil { startCount.get() == 1 }
 
+        // Let the subscription start
+        delay(200.milliseconds)
+
         subscription.publish(1)
         waitUntil { callCount.get() == 2 }
 
