@@ -11,18 +11,18 @@ import org.junit.jupiter.api.Test
 import java.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
-class LRUCacheTest {
+class MemoryLRUCacheTest {
 
     @Test
     fun getReturnsNullWhenEmpty() = runBlocking {
-        val cache = LRUCache<String, String>()
+        val cache = MemoryLRUCache<String, String>()
 
         assertNull(cache.get("key"))
     }
 
     @Test
     fun putStoresValue() = runBlocking {
-        val cache = LRUCache<String, String>()
+        val cache = MemoryLRUCache<String, String>()
 
         cache.put("key", "value")
 
@@ -31,7 +31,7 @@ class LRUCacheTest {
 
     @Test
     fun getReturnsNullAfterValueExpires() = runBlocking {
-        val cache = LRUCache<String, String>(duration = Duration.ofMillis(10))
+        val cache = MemoryLRUCache<String, String>(duration = Duration.ofMillis(10))
 
         cache.put("key", "value")
         delay(20.milliseconds)
@@ -41,7 +41,7 @@ class LRUCacheTest {
 
     @Test
     fun getOrPutReturnsCachedValueWithoutLookup() = runBlocking {
-        val cache = LRUCache<String, String>()
+        val cache = MemoryLRUCache<String, String>()
         var lookups = 0
 
         cache.put("key", "cached")
@@ -56,7 +56,7 @@ class LRUCacheTest {
 
     @Test
     fun getOrPutStoresLookupValueWhenMissing() = runBlocking {
-        val cache = LRUCache<String, String>()
+        val cache = MemoryLRUCache<String, String>()
         var lookups = 0
 
         val value = cache.getOrPut("key") {
@@ -71,7 +71,7 @@ class LRUCacheTest {
 
     @Test
     fun getOrPutStoresNullLookupValueWhenMissing() = runBlocking {
-        val cache = LRUCache<String, String?>()
+        val cache = MemoryLRUCache<String, String?>()
         var lookups = 0
 
         val value = cache.getOrPut("key") {
@@ -93,7 +93,7 @@ class LRUCacheTest {
 
     @Test
     fun invalidateRemovesValue() = runBlocking {
-        val cache = LRUCache<String, String>()
+        val cache = MemoryLRUCache<String, String>()
 
         cache.put("key", "value")
         cache.invalidate("key")
@@ -103,7 +103,7 @@ class LRUCacheTest {
 
     @Test
     fun putEvictsLeastRecentlyUsedValueWhenOverSize() = runBlocking {
-        val cache = LRUCache<String, String>(size = 2)
+        val cache = MemoryLRUCache<String, String>(size = 2)
 
         cache.put("one", "1")
         delay(5.milliseconds)
@@ -118,7 +118,7 @@ class LRUCacheTest {
 
     @Test
     fun getMarksValueAsRecentlyUsed() = runBlocking {
-        val cache = LRUCache<String, String>(size = 2)
+        val cache = MemoryLRUCache<String, String>(size = 2)
 
         cache.put("one", "1")
         delay(5.milliseconds)
@@ -135,7 +135,7 @@ class LRUCacheTest {
 
     @Test
     fun getOrPutMarksCachedValueAsRecentlyUsed() = runBlocking {
-        val cache = LRUCache<String, String>(size = 2)
+        val cache = MemoryLRUCache<String, String>(size = 2)
 
         cache.put("one", "1")
         delay(5.milliseconds)
@@ -152,7 +152,7 @@ class LRUCacheTest {
 
     @Test
     fun concurrentAccessDoesNotFailDuringEviction() = runBlocking {
-        val cache = LRUCache<String, String>(size = 16)
+        val cache = MemoryLRUCache<String, String>(size = 16)
 
         val jobs = (0..<32).map { worker ->
             launch(Dispatchers.Default) {
