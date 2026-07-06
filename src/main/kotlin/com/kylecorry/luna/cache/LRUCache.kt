@@ -10,4 +10,5 @@ interface LRUCache<K, T> {
     suspend fun getOrPut(key: K, lookup: suspend () -> T): T
 
     suspend fun invalidate(key: K)
+    suspend fun clear()
 }

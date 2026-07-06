@@ -153,6 +153,18 @@ class DiskLRUCacheTest {
     }
 
     @Test
+    fun clearRemovesAllValues() = runBlocking {
+        val cache = createCache()
+
+        cache.put("one", "1")
+        cache.put("two", "2")
+        cache.clear()
+
+        assertNull(cache.get("one"))
+        assertNull(cache.get("two"))
+    }
+
+    @Test
     fun putEvictsLeastRecentlyUsedValueWhenOverSize() = runBlocking {
         val cache = createCache(size = 2)
 

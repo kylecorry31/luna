@@ -139,6 +139,18 @@ class MemoryLRUCacheTest {
     }
 
     @Test
+    fun clearRemovesAllValues() = runBlocking {
+        val cache = MemoryLRUCache<String, String>()
+
+        cache.put("one", "1")
+        cache.put("two", "2")
+        cache.clear()
+
+        assertNull(cache.get("one"))
+        assertNull(cache.get("two"))
+    }
+
+    @Test
     fun putEvictsLeastRecentlyUsedValueWhenOverSize() = runBlocking {
         val cache = MemoryLRUCache<String, String>(size = 2)
 

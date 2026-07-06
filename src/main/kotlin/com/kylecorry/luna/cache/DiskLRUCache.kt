@@ -110,6 +110,21 @@ class DiskLRUCache<K, T>(
         }
     }
 
+    override suspend fun clear() {
+        stateMutex.withLock {
+            withContext(Dispatchers.IO) {
+                if (!baseFolder.exists()) {
+                    return@withContext
+                }
+
+                baseFolder.walkBottomUp()
+                    .filter { it != baseFolder }
+                    .filter { it.isDirectory || (it.isFile && !isTempFile(it)) }
+                    .forEach { it.delete() }
+            }
+        }
+    }
+
     private fun getFile(key: K): File {
         val file = File(baseFolder, getFilename(key)).canonicalFile
         require(file == baseFolder || file.path.startsWith("${baseFolder.path}${File.separator}")) {

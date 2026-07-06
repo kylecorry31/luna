@@ -75,6 +75,13 @@ class MemoryLRUCache<K, T>(
         }
     }
 
+    override suspend fun clear() {
+        stateMutex.withLock {
+            values.clear()
+            cachedAt.clear()
+        }
+    }
+
     private fun removeOldest() {
         if (size == null) {
             return

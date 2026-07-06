@@ -40,6 +40,12 @@ class MultiTierLRUCache<K, T>(vararg val caches: LRUCache<K, T>) : LRUCache<K, T
         }
     }
 
+    override suspend fun clear() {
+        for (cache in caches) {
+            cache.clear()
+        }
+    }
+
     private suspend fun getOrPut(key: K, cacheIndex: Int, lookup: suspend () -> T): T {
         if (cacheIndex == caches.lastIndex) {
             return caches[cacheIndex].getOrPut(key, lookup)

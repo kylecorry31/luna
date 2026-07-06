@@ -144,6 +144,20 @@ class MultiTierLRUCacheTest {
     }
 
     @Test
+    fun clearRemovesValuesFromAllTiers() = runBlocking {
+        val top = MemoryLRUCache<String, String>()
+        val bottom = MemoryLRUCache<String, String>()
+        val cache = MultiTierLRUCache(top, bottom)
+
+        top.put("top", "1")
+        bottom.put("bottom", "2")
+        cache.clear()
+
+        assertNull(top.get("top"))
+        assertNull(bottom.get("bottom"))
+    }
+
+    @Test
     fun concurrentGetOrPutOnlyRunsOneLookupPerKey() = runBlocking {
         val top = MemoryLRUCache<String, String>()
         val bottom = MemoryLRUCache<String, String>()
