@@ -1,6 +1,6 @@
 package com.kylecorry.luna.cache
 
-import kotlinx.coroutines.CoroutineDispatcher
+import com.kylecorry.luna.serialization.ISerializer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -18,42 +18,47 @@ class DiskLRUCache<K, T>(
     baseFolderPath: String,
     private val size: Int? = null,
     private val duration: Duration? = null,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val async: Boolean = false,
-    private val asyncScope: CoroutineScope = CoroutineScope(SupervisorJob() + dispatcher),
+    private val asyncScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
     private val getFilename: (K) -> String,
-    private val serialize: (T) -> ByteArray,
-    private val deserialize: (ByteArray) -> T
+    private val serializer: ISerializer<T>
 ) : LRUCache<K, T> {
 
     private val baseFolder = File(baseFolderPath).canonicalFile
     private val stateMutex = Mutex()
     private val singleFlight = SingleFlight<K, T>(asyncScope)
+    private val tempFilePrefix = ".luna-cache-"
+    private val tempFileSuffix = ".tmp"
 
     override suspend fun get(key: K): T? {
-        val cached = getCached(key, updateLastUsed = true) ?: return null
-        return deserialize(cached.value)
+        return getCached(key, updateLastUsed = true)?.value
     }
 
     override suspend fun peek(key: K): T? {
-        val cached = getCached(key, updateLastUsed = false) ?: return null
-        return deserialize(cached.value)
+        return getCached(key, updateLastUsed = false)?.value
     }
 
-    private suspend fun getCached(key: K, updateLastUsed: Boolean): CachedValue<ByteArray>? {
-        return stateMutex.withLock {
-            withContext(dispatcher) {
+    private suspend fun getCached(key: K, updateLastUsed: Boolean): CachedValue<T>? = withTempFile { tmp ->
+        val isCached = stateMutex.withLock {
+            withContext(Dispatchers.IO) {
                 val file = getFile(key)
                 if (hasValidCache(file)) {
                     if (updateLastUsed) {
                         file.setLastModified(System.currentTimeMillis())
                     }
-                    CachedValue(file.readBytes())
+                    file.copyTo(tmp, true)
+                    true
                 } else {
-                    null
+                    false
                 }
             }
         }
+
+        if (!isCached) {
+            return@withTempFile null
+        }
+
+        CachedValue(tmp.inputStream().use { serializer.deserialize(it) })
     }
 
     override suspend fun put(key: K, value: T) {
@@ -66,13 +71,13 @@ class DiskLRUCache<K, T>(
         }
     }
 
-    private suspend fun putSync(key: K, value: T) {
-        val serialized = serialize(value)
+    private suspend fun putSync(key: K, value: T) = withTempFile { tmp ->
+        tmp.outputStream().use { serializer.serialize(value, it) }
         stateMutex.withLock {
-            withContext(dispatcher) {
+            withContext(Dispatchers.IO) {
                 val file = getFile(key)
                 file.parentFile?.mkdirs()
-                file.writeBytes(serialized)
+                tmp.copyTo(file, true)
                 file.setLastModified(System.currentTimeMillis())
                 removeOldest()
             }
@@ -82,13 +87,13 @@ class DiskLRUCache<K, T>(
     override suspend fun getOrPut(key: K, lookup: suspend () -> T): T {
         val cached = getCached(key, updateLastUsed = true)
         if (cached != null) {
-            return deserialize(cached.value)
+            return cached.value
         }
 
         return singleFlight.getOrStart(key) {
             val raced = getCached(key, updateLastUsed = true)
             if (raced != null) {
-                return@getOrStart deserialize(raced.value)
+                return@getOrStart raced.value
             }
 
             val newValue = lookup()
@@ -99,7 +104,7 @@ class DiskLRUCache<K, T>(
 
     override suspend fun invalidate(key: K) {
         stateMutex.withLock {
-            withContext(dispatcher) {
+            withContext(Dispatchers.IO) {
                 getFile(key).delete()
             }
         }
@@ -111,6 +116,21 @@ class DiskLRUCache<K, T>(
             "Cache key must be relative to the base folder"
         }
         return file
+    }
+
+    private suspend inline fun <T> withTempFile(crossinline block: suspend (file: File) -> T): T {
+        val tmp = withContext(Dispatchers.IO) {
+            File.createTempFile(tempFilePrefix, tempFileSuffix)
+        }
+        return try {
+            block(tmp)
+        } finally {
+            tmp.delete()
+        }
+    }
+
+    private fun isTempFile(file: File): Boolean {
+        return file.name.startsWith(tempFilePrefix) && file.name.endsWith(tempFileSuffix)
     }
 
     private fun hasValidCache(file: File): Boolean {
@@ -128,7 +148,7 @@ class DiskLRUCache<K, T>(
         val size = size ?: return
         val files = baseFolder
             .walkTopDown()
-            .filter(File::isFile)
+            .filter { it.isFile && !isTempFile(it) }
             .sortedBy(File::lastModified)
             .toList()
 

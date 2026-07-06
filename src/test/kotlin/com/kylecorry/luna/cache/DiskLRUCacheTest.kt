@@ -1,5 +1,7 @@
 package com.kylecorry.luna.cache
 
+import com.kylecorry.luna.serialization.ISerializer
+import com.kylecorry.luna.serialization.TextSerializer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -12,6 +14,8 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.io.InputStream
+import java.io.OutputStream
 import java.nio.file.Path
 import java.time.Duration
 import java.util.concurrent.CountDownLatch
@@ -294,8 +298,7 @@ class DiskLRUCacheTest {
             duration = duration,
             async = async,
             getFilename = { it },
-            serialize = { it.encodeToByteArray() },
-            deserialize = { it.decodeToString() }
+            serializer = TextSerializer()
         )
     }
 
@@ -303,8 +306,17 @@ class DiskLRUCacheTest {
         return DiskLRUCache(
             baseFolderPath = tempDir.toString(),
             getFilename = { it },
-            serialize = { (it ?: "").encodeToByteArray() },
-            deserialize = { it.decodeToString().ifEmpty { null } }
+            serializer = object : ISerializer<String?> {
+                private val base = TextSerializer()
+
+                override fun serialize(obj: String?, stream: OutputStream) {
+                    base.serialize(obj ?: "", stream)
+                }
+
+                override fun deserialize(stream: InputStream): String? {
+                    return base.deserialize(stream).ifEmpty { null }
+                }
+            }
         )
     }
 
@@ -312,11 +324,18 @@ class DiskLRUCacheTest {
         return DiskLRUCache(
             baseFolderPath = tempDir.toString(),
             getFilename = { it },
-            serialize = { "${it.id}:${it.value}".encodeToByteArray() },
-            deserialize = {
-                val text = it.decodeToString()
-                val parts = text.split(":", limit = 2)
-                EncodedValue(parts[0].toInt(), parts[1])
+            serializer = object : ISerializer<EncodedValue> {
+                private val base = TextSerializer()
+
+                override fun serialize(obj: EncodedValue, stream: OutputStream) {
+                    base.serialize("${obj.id}:${obj.value}", stream)
+                }
+
+                override fun deserialize(stream: InputStream): EncodedValue {
+                    val text = base.deserialize(stream)
+                    val parts = text.split(":", limit = 2)
+                    return EncodedValue(parts[0].toInt(), parts[1])
+                }
             }
         )
     }
@@ -329,12 +348,19 @@ class DiskLRUCacheTest {
             baseFolderPath = tempDir.toString(),
             async = true,
             getFilename = { it },
-            serialize = {
-                serializeStarted.countDown()
-                allowSerialize.await(5, TimeUnit.SECONDS)
-                it.encodeToByteArray()
-            },
-            deserialize = { it.decodeToString() }
+            serializer = object : ISerializer<String> {
+                private val base = TextSerializer()
+
+                override fun serialize(obj: String, stream: OutputStream) {
+                    serializeStarted.countDown()
+                    allowSerialize.await(5, TimeUnit.SECONDS)
+                    base.serialize(obj, stream)
+                }
+
+                override fun deserialize(stream: InputStream): String {
+                    return base.deserialize(stream)
+                }
+            }
         )
     }
 
