@@ -58,7 +58,9 @@ class DiskLRUCache<K, T>(
             return@withTempFile null
         }
 
-        CachedValue(tmp.inputStream().use { serializer.deserialize(it) })
+        withContext(Dispatchers.IO) {
+            CachedValue(tmp.inputStream().use { serializer.deserialize(it) })
+        }
     }
 
     override suspend fun put(key: K, value: T) {
@@ -72,7 +74,9 @@ class DiskLRUCache<K, T>(
     }
 
     private suspend fun putSync(key: K, value: T) = withTempFile { tmp ->
-        tmp.outputStream().use { serializer.serialize(value, it) }
+        withContext(Dispatchers.IO) {
+            tmp.outputStream().use { serializer.serialize(value, it) }
+        }
         stateMutex.withLock {
             withContext(Dispatchers.IO) {
                 val file = getFile(key)
