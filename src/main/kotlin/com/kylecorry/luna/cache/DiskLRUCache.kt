@@ -1,5 +1,6 @@
 package com.kylecorry.luna.cache
 
+import com.kylecorry.luna.concurrency.SingleFlight
 import com.kylecorry.luna.serialization.ISerializer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,7 +23,7 @@ class DiskLRUCache<K, T>(
     private val asyncScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
     private val getFilename: (K) -> String,
     private val serializer: ISerializer<T>
-) : LRUCache<K, T> {
+) : Cache<K, T> {
 
     private val baseFolder = File(baseFolderPath).canonicalFile
     private val stateMutex = Mutex()
@@ -94,10 +95,10 @@ class DiskLRUCache<K, T>(
             return cached.value
         }
 
-        return singleFlight.getOrStart(key) {
+        return singleFlight.invoke(key) {
             val raced = getCached(key, updateLastUsed = true)
             if (raced != null) {
-                return@getOrStart raced.value
+                return@invoke raced.value
             }
 
             val newValue = lookup()

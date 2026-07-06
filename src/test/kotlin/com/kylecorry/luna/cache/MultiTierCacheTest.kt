@@ -11,12 +11,12 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import kotlin.time.Duration.Companion.milliseconds
 
-class MultiTierLRUCacheTest {
+class MultiTierCacheTest {
 
     @Test
     fun constructorRequiresAtLeastOneCache() {
         assertThrows(IllegalArgumentException::class.java) {
-            MultiTierLRUCache<String, String>()
+            MultiTierCache<String, String>()
         }
     }
 
@@ -24,7 +24,7 @@ class MultiTierLRUCacheTest {
     fun getOrPutReturnsTopTierCachedValueWithoutLookup() = runBlocking {
         val top = MemoryLRUCache<String, String>()
         val bottom = MemoryLRUCache<String, String>()
-        val cache = MultiTierLRUCache(top, bottom)
+        val cache = MultiTierCache(top, bottom)
         var lookups = 0
 
         top.put("key", "cached")
@@ -41,7 +41,7 @@ class MultiTierLRUCacheTest {
     fun getOrPutPromotesLowerTierCachedValueWithoutLookup() = runBlocking {
         val top = MemoryLRUCache<String, String>()
         val bottom = MemoryLRUCache<String, String>()
-        val cache = MultiTierLRUCache(top, bottom)
+        val cache = MultiTierCache(top, bottom)
         var lookups = 0
 
         bottom.put("key", "cached")
@@ -59,7 +59,7 @@ class MultiTierLRUCacheTest {
     fun peekReturnsLowerTierCachedValueWithoutPromoting() = runBlocking {
         val top = MemoryLRUCache<String, String>()
         val bottom = MemoryLRUCache<String, String>()
-        val cache = MultiTierLRUCache(top, bottom)
+        val cache = MultiTierCache(top, bottom)
 
         bottom.put("key", "cached")
         val value = cache.peek("key")
@@ -72,7 +72,7 @@ class MultiTierLRUCacheTest {
     fun getOrPutStoresLookupValueInAllTiersWhenMissing() = runBlocking {
         val top = MemoryLRUCache<String, String>()
         val bottom = MemoryLRUCache<String, String>()
-        val cache = MultiTierLRUCache(top, bottom)
+        val cache = MultiTierCache(top, bottom)
         var lookups = 0
 
         val value = cache.getOrPut("key") {
@@ -90,7 +90,7 @@ class MultiTierLRUCacheTest {
     fun getOrPutPromotesNullLowerTierCachedValueWithoutLookup() = runBlocking {
         val top = MemoryLRUCache<String, String?>()
         val bottom = MemoryLRUCache<String, String?>()
-        val cache = MultiTierLRUCache(top, bottom)
+        val cache = MultiTierCache(top, bottom)
         var lookups = 0
 
         bottom.getOrPut("key") { null }
@@ -112,7 +112,7 @@ class MultiTierLRUCacheTest {
     fun getOrPutStoresNullLookupValueInAllTiersWhenMissing() = runBlocking {
         val top = MemoryLRUCache<String, String?>()
         val bottom = MemoryLRUCache<String, String?>()
-        val cache = MultiTierLRUCache(top, bottom)
+        val cache = MultiTierCache(top, bottom)
         var lookups = 0
 
         val value = cache.getOrPut("key") {
@@ -134,7 +134,7 @@ class MultiTierLRUCacheTest {
     fun invalidateRemovesValueFromAllTiers() = runBlocking {
         val top = MemoryLRUCache<String, String>()
         val bottom = MemoryLRUCache<String, String>()
-        val cache = MultiTierLRUCache(top, bottom)
+        val cache = MultiTierCache(top, bottom)
 
         cache.put("key", "value")
         cache.invalidate("key")
@@ -147,7 +147,7 @@ class MultiTierLRUCacheTest {
     fun clearRemovesValuesFromAllTiers() = runBlocking {
         val top = MemoryLRUCache<String, String>()
         val bottom = MemoryLRUCache<String, String>()
-        val cache = MultiTierLRUCache(top, bottom)
+        val cache = MultiTierCache(top, bottom)
 
         top.put("top", "1")
         bottom.put("bottom", "2")
@@ -161,7 +161,7 @@ class MultiTierLRUCacheTest {
     fun concurrentGetOrPutOnlyRunsOneLookupPerKey() = runBlocking {
         val top = MemoryLRUCache<String, String>()
         val bottom = MemoryLRUCache<String, String>()
-        val cache = MultiTierLRUCache(top, bottom)
+        val cache = MultiTierCache(top, bottom)
         var lookups = 0
 
         val values = (0..<32).map {

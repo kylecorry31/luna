@@ -1,19 +1,21 @@
-package com.kylecorry.luna.cache
+package com.kylecorry.luna.concurrency
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-internal class SingleFlight<K, V>(
-    private val scope: CoroutineScope
+class SingleFlight<K, V>(
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private val lock = Mutex()
     private val inFlight = mutableMapOf<K, Deferred<V>>()
 
-    suspend fun getOrStart(key: K, block: suspend () -> V): V {
+    suspend fun invoke(key: K, block: suspend () -> V): V {
         val existing = lock.withLock {
             inFlight[key]
         }

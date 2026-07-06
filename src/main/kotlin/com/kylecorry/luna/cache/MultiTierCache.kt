@@ -1,6 +1,6 @@
 package com.kylecorry.luna.cache
 
-class MultiTierLRUCache<K, T>(vararg val caches: LRUCache<K, T>) : LRUCache<K, T> {
+class MultiTierCache<K, T>(vararg val caches: Cache<K, T>) : Cache<K, T> {
     init {
         require(caches.isNotEmpty()) { "At least one cache is required" }
     }

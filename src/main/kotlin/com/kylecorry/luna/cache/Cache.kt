@@ -1,6 +1,6 @@
 package com.kylecorry.luna.cache
 
-interface LRUCache<K, T> {
+interface Cache<K, T> {
     suspend fun get(key: K): T?
 
     suspend fun peek(key: K): T?

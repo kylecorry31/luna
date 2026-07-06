@@ -1,8 +1,6 @@
 package com.kylecorry.luna.cache
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import com.kylecorry.luna.concurrency.SingleFlight
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Duration
@@ -14,11 +12,11 @@ import java.time.Instant
 class MemoryLRUCache<K, T>(
     private val size: Int? = null,
     private val duration: Duration? = null
-) : LRUCache<K, T> {
+) : Cache<K, T> {
 
     private val values = mutableMapOf<K, CachedValue<T>>()
     private val stateMutex = Mutex()
-    private val singleFlight = SingleFlight<K, T>(CoroutineScope(SupervisorJob() + Dispatchers.Default))
+    private val singleFlight = SingleFlight<K, T>()
 
     override suspend fun get(key: K): T? {
         return getCached(key, updateLastUsed = true)?.value
@@ -54,10 +52,10 @@ class MemoryLRUCache<K, T>(
         if (cached != null) {
             return cached.value
         }
-        return singleFlight.getOrStart(key) {
+        return singleFlight.invoke(key) {
             val raced = getCached(key, updateLastUsed = true)
             if (raced != null) {
-                return@getOrStart raced.value
+                return@invoke raced.value
             }
 
             val newValue = lookup()
