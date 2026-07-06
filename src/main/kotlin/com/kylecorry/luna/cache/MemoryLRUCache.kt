@@ -16,8 +16,7 @@ class MemoryLRUCache<K, T>(
     private val duration: Duration? = null
 ) : LRUCache<K, T> {
 
-    private val values = mutableMapOf<K, T>()
-    private val cachedAt = mutableMapOf<K, Instant>()
+    private val values = mutableMapOf<K, CachedValue<T>>()
     private val stateMutex = Mutex()
     private val singleFlight = SingleFlight<K, T>(CoroutineScope(SupervisorJob() + Dispatchers.Default))
 
@@ -32,11 +31,11 @@ class MemoryLRUCache<K, T>(
     private suspend fun getCached(key: K, updateLastUsed: Boolean): CachedValue<T>? {
         return stateMutex.withLock {
             if (hasValidCache(key)) {
+                val cached = values[key] ?: return@withLock null
                 if (updateLastUsed) {
-                    cachedAt[key] = Instant.now()
+                    cached.cachedAt = Instant.now()
                 }
-                @Suppress("UNCHECKED_CAST")
-                CachedValue(values[key] as T)
+                cached
             } else {
                 null
             }
@@ -45,8 +44,7 @@ class MemoryLRUCache<K, T>(
 
     override suspend fun put(key: K, value: T) {
         stateMutex.withLock {
-            values[key] = value
-            cachedAt[key] = Instant.now()
+            values[key] = CachedValue(value, Instant.now())
             removeOldest()
         }
     }
@@ -71,14 +69,12 @@ class MemoryLRUCache<K, T>(
     override suspend fun invalidate(key: K) {
         stateMutex.withLock {
             values.remove(key)
-            cachedAt.remove(key)
         }
     }
 
     override suspend fun clear() {
         stateMutex.withLock {
             values.clear()
-            cachedAt.clear()
         }
     }
 
@@ -89,9 +85,8 @@ class MemoryLRUCache<K, T>(
         if (values.size <= size) {
             return
         }
-        val oldest = cachedAt.minByOrNull { it.value }?.key ?: return
+        val oldest = values.minByOrNull { it.value.cachedAt }?.key ?: return
         values.remove(oldest)
-        cachedAt.remove(oldest)
     }
 
     private fun hasValidCache(key: K): Boolean {
@@ -103,11 +98,11 @@ class MemoryLRUCache<K, T>(
             return false
         }
 
-        val time = cachedAt[key] ?: return false
+        val time = values[key]?.cachedAt ?: return false
 
         val now = Instant.now()
         return time >= now || Duration.between(time, now) > duration
     }
 
-    private class CachedValue<T>(val value: T)
+    private class CachedValue<T>(val value: T, var cachedAt: Instant)
 }
