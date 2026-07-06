@@ -1,6 +1,8 @@
 package com.kylecorry.luna.cache
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
@@ -55,6 +57,21 @@ class MemoryLRUCacheTest {
     }
 
     @Test
+    fun getOrPutReturnsCachedNullValueWithoutLookup() = runBlocking {
+        val cache = MemoryLRUCache<String, String?>()
+        var lookups = 0
+
+        cache.put("key", null)
+        val value = cache.getOrPut("key") {
+            lookups++
+            "lookup"
+        }
+
+        assertNull(value)
+        assertEquals(0, lookups)
+    }
+
+    @Test
     fun getOrPutStoresLookupValueWhenMissing() = runBlocking {
         val cache = MemoryLRUCache<String, String>()
         var lookups = 0
@@ -65,6 +82,26 @@ class MemoryLRUCacheTest {
         }
 
         assertEquals("lookup", value)
+        assertEquals("lookup", cache.get("key"))
+        assertEquals(1, lookups)
+    }
+
+    @Test
+    fun concurrentGetOrPutOnlyRunsOneLookupPerKey() = runBlocking {
+        val cache = MemoryLRUCache<String, String>()
+        var lookups = 0
+
+        val values = (0..<32).map {
+            async(Dispatchers.Default) {
+                cache.getOrPut("key") {
+                    lookups++
+                    delay(20.milliseconds)
+                    "lookup"
+                }
+            }
+        }.awaitAll()
+
+        assertEquals(List(32) { "lookup" }, values)
         assertEquals("lookup", cache.get("key"))
         assertEquals(1, lookups)
     }
@@ -130,6 +167,23 @@ class MemoryLRUCacheTest {
 
         assertEquals("1", cache.get("one"))
         assertNull(cache.get("two"))
+        assertEquals("3", cache.get("three"))
+    }
+
+    @Test
+    fun peekDoesNotMarkValueAsRecentlyUsed() = runBlocking {
+        val cache = MemoryLRUCache<String, String>(size = 2)
+
+        cache.put("one", "1")
+        delay(5.milliseconds)
+        cache.put("two", "2")
+        delay(5.milliseconds)
+        assertEquals("1", cache.peek("one"))
+        delay(5.milliseconds)
+        cache.put("three", "3")
+
+        assertNull(cache.get("one"))
+        assertEquals("2", cache.get("two"))
         assertEquals("3", cache.get("three"))
     }
 

@@ -1,6 +1,10 @@
 package com.kylecorry.luna.cache
 
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -14,95 +18,89 @@ class DiskLRUCache<K, T>(
     baseFolderPath: String,
     private val size: Int? = null,
     private val duration: Duration? = null,
-    private val useSingleLock: Boolean = false,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val async: Boolean = false,
+    private val asyncScope: CoroutineScope = CoroutineScope(SupervisorJob() + dispatcher),
     private val getFilename: (K) -> String,
     private val serialize: (T) -> ByteArray,
     private val deserialize: (ByteArray) -> T
-): LRUCache<K, T> {
+) : LRUCache<K, T> {
 
     private val baseFolder = File(baseFolderPath).canonicalFile
-    private val mutexes = mutableMapOf<K, Mutex>()
     private val stateMutex = Mutex()
-    private val mutex = Mutex()
+    private val singleFlight = SingleFlight<K, T>(asyncScope)
 
     override suspend fun get(key: K): T? {
-        return getLock(key).withLock {
-            stateMutex.withLock {
-                withContext(Dispatchers.IO) {
-                    val file = getFile(key)
-                    if (hasValidCache(file)) {
+        val cached = getCached(key, updateLastUsed = true) ?: return null
+        return deserialize(cached.value)
+    }
+
+    override suspend fun peek(key: K): T? {
+        val cached = getCached(key, updateLastUsed = false) ?: return null
+        return deserialize(cached.value)
+    }
+
+    private suspend fun getCached(key: K, updateLastUsed: Boolean): CachedValue<ByteArray>? {
+        return stateMutex.withLock {
+            withContext(dispatcher) {
+                val file = getFile(key)
+                if (hasValidCache(file)) {
+                    if (updateLastUsed) {
                         file.setLastModified(System.currentTimeMillis())
-                        deserialize(file.readBytes())
-                    } else {
-                        null
                     }
+                    CachedValue(file.readBytes())
+                } else {
+                    null
                 }
             }
         }
     }
 
     override suspend fun put(key: K, value: T) {
-        getLock(key).withLock {
-            stateMutex.withLock {
-                withContext(Dispatchers.IO) {
-                    val file = getFile(key)
-                    file.parentFile?.mkdirs()
-                    file.writeBytes(serialize(value))
-                    file.setLastModified(System.currentTimeMillis())
-                    removeOldest()
-                }
+        if (async) {
+            asyncScope.launch {
+                putSync(key, value)
+            }
+        } else {
+            putSync(key, value)
+        }
+    }
+
+    private suspend fun putSync(key: K, value: T) {
+        val serialized = serialize(value)
+        stateMutex.withLock {
+            withContext(dispatcher) {
+                val file = getFile(key)
+                file.parentFile?.mkdirs()
+                file.writeBytes(serialized)
+                file.setLastModified(System.currentTimeMillis())
+                removeOldest()
             }
         }
     }
 
     override suspend fun getOrPut(key: K, lookup: suspend () -> T): T {
-        return getLock(key).withLock operation@{
-            val cached = stateMutex.withLock {
-                withContext(Dispatchers.IO) {
-                    val file = getFile(key)
-                    if (hasValidCache(file)) {
-                        file.setLastModified(System.currentTimeMillis())
-                        CachedValue(deserialize(file.readBytes()))
-                    } else {
-                        null
-                    }
-                }
-            }
-            if (cached != null) {
-                return@operation cached.value
+        val cached = getCached(key, updateLastUsed = true)
+        if (cached != null) {
+            return deserialize(cached.value)
+        }
+
+        return singleFlight.getOrStart(key) {
+            val raced = getCached(key, updateLastUsed = true)
+            if (raced != null) {
+                return@getOrStart deserialize(raced.value)
             }
 
             val newValue = lookup()
-            stateMutex.withLock {
-                withContext(Dispatchers.IO) {
-                    val file = getFile(key)
-                    file.parentFile?.mkdirs()
-                    file.writeBytes(serialize(newValue))
-                    file.setLastModified(System.currentTimeMillis())
-                    removeOldest()
-                }
-            }
+            put(key, newValue)
             newValue
         }
     }
 
     override suspend fun invalidate(key: K) {
-        getLock(key).withLock {
-            stateMutex.withLock {
-                withContext(Dispatchers.IO) {
-                    getFile(key).delete()
-                }
-                mutexes.remove(key)
-            }
-        }
-    }
-
-    private suspend fun getLock(key: K): Mutex {
-        return if (useSingleLock) {
-            mutex
-        } else {
-            stateMutex.withLock {
-                mutexes.computeIfAbsent(key) { Mutex() }
+        stateMutex.withLock {
+            withContext(dispatcher) {
+                getFile(key).delete()
             }
         }
     }

@@ -1,16 +1,21 @@
 package com.kylecorry.luna.cache
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import java.time.Duration
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.io.path.readBytes
 import kotlin.io.path.writeBytes
 import kotlin.time.Duration.Companion.milliseconds
@@ -62,6 +67,21 @@ class DiskLRUCacheTest {
     }
 
     @Test
+    fun getOrPutReturnsCachedNullValueWithoutLookup() = runBlocking {
+        val cache = createNullableCache()
+        var lookups = 0
+
+        cache.put("key", null)
+        val value = cache.getOrPut("key") {
+            lookups++
+            "lookup"
+        }
+
+        assertNull(value)
+        assertEquals(0, lookups)
+    }
+
+    @Test
     fun getOrPutStoresLookupValueWhenMissing() = runBlocking {
         val cache = createCache()
         var lookups = 0
@@ -72,6 +92,26 @@ class DiskLRUCacheTest {
         }
 
         assertEquals("lookup", value)
+        assertEquals("lookup", cache.get("key"))
+        assertEquals(1, lookups)
+    }
+
+    @Test
+    fun concurrentGetOrPutOnlyRunsOneLookupPerKey() = runBlocking {
+        val cache = createCache()
+        var lookups = 0
+
+        val values = (0..<32).map {
+            async(Dispatchers.Default) {
+                cache.getOrPut("key") {
+                    lookups++
+                    delay(20.milliseconds)
+                    "lookup"
+                }
+            }
+        }.awaitAll()
+
+        assertEquals(List(32) { "lookup" }, values)
         assertEquals("lookup", cache.get("key"))
         assertEquals(1, lookups)
     }
@@ -141,6 +181,23 @@ class DiskLRUCacheTest {
     }
 
     @Test
+    fun peekDoesNotMarkValueAsRecentlyUsed() = runBlocking {
+        val cache = createCache(size = 2)
+
+        cache.put("one", "1")
+        delay(20.milliseconds)
+        cache.put("two", "2")
+        delay(20.milliseconds)
+        assertEquals("1", cache.peek("one"))
+        delay(20.milliseconds)
+        cache.put("three", "3")
+
+        assertNull(cache.get("one"))
+        assertEquals("2", cache.get("two"))
+        assertEquals("3", cache.get("three"))
+    }
+
+    @Test
     fun getOrPutMarksCachedValueAsRecentlyUsed() = runBlocking {
         val cache = createCache(size = 2)
 
@@ -164,6 +221,41 @@ class DiskLRUCacheTest {
         cache.put("key", EncodedValue(3, "value"))
 
         assertEquals("3:value", tempDir.resolve("key").readBytes().decodeToString())
+    }
+
+    @Test
+    fun putWritesValueInBackgroundWhenAsync() = runBlocking {
+        val serializeStarted = CountDownLatch(1)
+        val allowSerialize = CountDownLatch(1)
+        val cache = createBlockingSerializeCache(serializeStarted, allowSerialize)
+
+        cache.put("key", "value")
+
+        assertTrue(serializeStarted.await(1, TimeUnit.SECONDS))
+        assertNull(cache.get("key"))
+
+        allowSerialize.countDown()
+
+        assertEquals("value", awaitCachedValue(cache, "key"))
+    }
+
+    @Test
+    fun getOrPutStoresLookupValueInBackgroundWhenAsync() = runBlocking {
+        val serializeStarted = CountDownLatch(1)
+        val allowSerialize = CountDownLatch(1)
+        val cache = createBlockingSerializeCache(serializeStarted, allowSerialize)
+
+        val value = cache.getOrPut("key") {
+            "lookup"
+        }
+
+        assertEquals("lookup", value)
+        assertTrue(serializeStarted.await(1, TimeUnit.SECONDS))
+        assertNull(cache.get("key"))
+
+        allowSerialize.countDown()
+
+        assertEquals("lookup", awaitCachedValue(cache, "key"))
     }
 
     @Test
@@ -193,12 +285,14 @@ class DiskLRUCacheTest {
 
     private fun createCache(
         size: Int? = null,
-        duration: Duration? = null
+        duration: Duration? = null,
+        async: Boolean = false
     ): DiskLRUCache<String, String> {
         return DiskLRUCache(
             baseFolderPath = tempDir.toString(),
             size = size,
             duration = duration,
+            async = async,
             getFilename = { it },
             serialize = { it.encodeToByteArray() },
             deserialize = { it.decodeToString() }
@@ -225,6 +319,34 @@ class DiskLRUCacheTest {
                 EncodedValue(parts[0].toInt(), parts[1])
             }
         )
+    }
+
+    private fun createBlockingSerializeCache(
+        serializeStarted: CountDownLatch,
+        allowSerialize: CountDownLatch
+    ): DiskLRUCache<String, String> {
+        return DiskLRUCache(
+            baseFolderPath = tempDir.toString(),
+            async = true,
+            getFilename = { it },
+            serialize = {
+                serializeStarted.countDown()
+                allowSerialize.await(5, TimeUnit.SECONDS)
+                it.encodeToByteArray()
+            },
+            deserialize = { it.decodeToString() }
+        )
+    }
+
+    private suspend fun awaitCachedValue(
+        cache: DiskLRUCache<String, String>,
+        key: String
+    ): String? {
+        repeat(50) {
+            cache.get(key)?.let { return it }
+            delay(20.milliseconds)
+        }
+        return cache.get(key)
     }
 
     private data class EncodedValue(val id: Int, val value: String)
