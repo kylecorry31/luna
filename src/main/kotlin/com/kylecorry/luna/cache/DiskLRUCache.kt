@@ -27,7 +27,7 @@ class DiskLRUCache<K, T>(
 
     private val baseFolder = File(baseFolderPath).canonicalFile
     private val stateMutex = Mutex()
-    private val singleFlight = SingleFlight<K, T>(asyncScope)
+    private val singleFlight = SingleFlight<K, T>()
     private val tempFilePrefix = ".luna-cache-"
     private val tempFileSuffix = ".tmp"
 

@@ -1,49 +1,32 @@
 package com.kylecorry.luna.concurrency
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-class SingleFlight<K, V>(
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
-) {
+class SingleFlight<K, V> {
+
     private val lock = Mutex()
-    private val inFlight = mutableMapOf<K, Deferred<V>>()
+    private val inFlight = mutableMapOf<K, CompletableDeferred<V>>()
 
     suspend fun invoke(key: K, block: suspend () -> V): V {
-        val existing = lock.withLock {
-            inFlight[key]
-        }
-
-        if (existing != null) {
-            return existing.await()
-        }
-
-        val deferred = scope.async(start = CoroutineStart.LAZY) {
-            block()
-        }
-
+        val candidate = CompletableDeferred<V>()
         val actual = lock.withLock {
-            val raced = inFlight[key]
+            inFlight.getOrPut(key) { candidate }
+        }
 
-            if (raced != null) {
-                raced
-            } else {
-                inFlight[key] = deferred
-                deferred
-            }
+        if (actual !== candidate) {
+            return actual.await()
         }
 
         return try {
-            actual.await()
+            block().also(candidate::complete)
+        } catch (throwable: Throwable) {
+            candidate.completeExceptionally(throwable)
+            throw throwable
         } finally {
             lock.withLock {
-                if (inFlight[key] === actual) {
+                if (inFlight[key] === candidate) {
                     inFlight.remove(key)
                 }
             }

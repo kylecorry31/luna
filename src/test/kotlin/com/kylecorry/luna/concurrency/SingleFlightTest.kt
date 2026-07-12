@@ -1,6 +1,7 @@
 package com.kylecorry.luna.concurrency
 
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
@@ -13,7 +14,7 @@ class SingleFlightTest {
 
     @Test
     fun sharesInFlightWorkForSameKey() = runBlocking {
-        val singleFlight = SingleFlight<String, Int>(this)
+        val singleFlight = SingleFlight<String, Int>()
         val calls = AtomicInteger(0)
         val started = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
@@ -47,7 +48,7 @@ class SingleFlightTest {
 
     @Test
     fun runsWorkSeparatelyForDifferentKeys() = runBlocking {
-        val singleFlight = SingleFlight<String, Int>(this)
+        val singleFlight = SingleFlight<String, Int>()
         val calls = AtomicInteger(0)
         val release = CompletableDeferred<Unit>()
 
@@ -76,7 +77,7 @@ class SingleFlightTest {
 
     @Test
     fun removesInFlightWorkAfterSuccess() = runBlocking {
-        val singleFlight = SingleFlight<String, Int>(this)
+        val singleFlight = SingleFlight<String, Int>()
         val calls = AtomicInteger(0)
 
         val first = singleFlight.invoke("key") {
@@ -95,7 +96,7 @@ class SingleFlightTest {
     @Test
     fun sharesExceptionForSameKeyAndRemovesInFlightWorkAfterFailure() = runBlocking {
         supervisorScope {
-            val singleFlight = SingleFlight<String, Int>(this)
+            val singleFlight = SingleFlight<String, Int>()
             val calls = AtomicInteger(0)
             val expected = IllegalStateException("boom")
             val started = CompletableDeferred<Unit>()
@@ -145,7 +146,7 @@ class SingleFlightTest {
 
     @Test
     fun allowsNullKeys() = runBlocking {
-        val singleFlight = SingleFlight<String?, Int>(this)
+        val singleFlight = SingleFlight<String?, Int>()
         val calls = AtomicInteger(0)
 
         val result = singleFlight.invoke(null) {
