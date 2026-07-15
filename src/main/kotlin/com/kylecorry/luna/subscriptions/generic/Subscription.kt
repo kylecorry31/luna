@@ -1,6 +1,7 @@
 package com.kylecorry.luna.subscriptions.generic
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
@@ -46,7 +47,7 @@ class Subscription<T>(
     ) {
         synchronized(jobLock) {
             listeners[listener]?.cancel()
-            listeners[listener] = scope.launch {
+            listeners[listener] = scope.launch(start = CoroutineStart.UNDISPATCHED) {
                 modifiers(subscriptionFlow).collect { listener(it) }
             }
         }

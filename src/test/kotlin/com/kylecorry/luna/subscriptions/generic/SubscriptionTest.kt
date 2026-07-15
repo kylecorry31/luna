@@ -11,6 +11,17 @@ import kotlin.time.Duration.Companion.milliseconds
 class SubscriptionTest {
 
     @Test
+    fun receivesValuePublishedImmediatelyAfterSubscribing() = runBlocking {
+        var value: Int? = null
+        val subscription = Subscription<Int>()
+
+        subscription.subscribe { value = it }
+        subscription.publish(3)
+
+        waitUntil { value == 3 }
+    }
+
+    @Test
     fun canPublish() = runBlocking {
         val startCount = AtomicInteger(0)
         var value: Int? = null
