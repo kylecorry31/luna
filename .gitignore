@@ -82,3 +82,4 @@ temp/
 .idea/markdown.xml
 .idea/AndroidProjectSystem.xml
 /.vscode/tasks.json
+.scratch/
