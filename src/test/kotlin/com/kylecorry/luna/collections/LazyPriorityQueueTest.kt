@@ -1,7 +1,10 @@
 package com.kylecorry.luna.collections
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.CountDownLatch
 
 class LazyPriorityQueueTest {
 
@@ -83,5 +86,109 @@ class LazyPriorityQueueTest {
 
         assertEquals(emptyList<Int>(), queue.dequeue(3))
         assertEquals(0, queue.count())
+    }
+
+    @Test
+    fun concurrentDequeuesReturnEachItemExactlyOnce() {
+        val itemCount = 10000
+        val threadCount = 4
+        val queue = LazyPriorityQueue<Int>(itemCount, compareByDescending { it })
+        repeat(itemCount) { queue.enqueue(it) }
+
+        val dequeued = ConcurrentLinkedQueue<Int>()
+        val start = CountDownLatch(1)
+        val threads = (0 until threadCount).map {
+            Thread {
+                start.await()
+                while (dequeued.size < itemCount) {
+                    dequeued.addAll(queue.dequeue(8))
+                }
+            }
+        }
+
+        threads.forEach { it.start() }
+        start.countDown()
+        threads.forEach { it.join(10000) }
+
+        assertEquals(itemCount, dequeued.size)
+        assertEquals((0 until itemCount).toSet(), dequeued.toSet())
+        assertEquals(0, queue.count())
+    }
+
+    @Test
+    fun concurrentEnqueuesAndDequeuesDoNotLoseItems() {
+        val perThread = 2000
+        val producerCount = 4
+        val itemCount = perThread * producerCount
+        val queue = LazyPriorityQueue<Int>(64, compareByDescending { it })
+
+        val dequeued = ConcurrentLinkedQueue<Int>()
+        val start = CountDownLatch(1)
+        val producers = (0 until producerCount).map { thread ->
+            Thread {
+                start.await()
+                repeat(perThread) { queue.enqueue(thread * perThread + it) }
+            }
+        }
+        val consumers = (0 until 2).map {
+            Thread {
+                start.await()
+                while (dequeued.size < itemCount) {
+                    dequeued.addAll(queue.dequeue(8))
+                }
+            }
+        }
+
+        (producers + consumers).forEach { it.start() }
+        start.countDown()
+        (producers + consumers).forEach { it.join(10000) }
+
+        assertEquals(itemCount, dequeued.size)
+        assertEquals((0 until itemCount).toSet(), dequeued.toSet())
+        assertEquals(0, queue.count())
+    }
+
+    @Test
+    fun clearDuringDequeueLeavesQueueConsistent() {
+        val queue = LazyPriorityQueue<Int>(64, compareByDescending { it })
+        repeat(1000) { queue.enqueue(it) }
+
+        val dequeued = ConcurrentLinkedQueue<Int>()
+        val start = CountDownLatch(1)
+        val consumer = Thread {
+            start.await()
+            repeat(200) { dequeued.addAll(queue.dequeue(4)) }
+        }
+        val clearer = Thread {
+            start.await()
+            repeat(50) { queue.clear() }
+        }
+
+        consumer.start()
+        clearer.start()
+        start.countDown()
+        consumer.join(10000)
+        clearer.join(10000)
+
+        // Items may be discarded by clear, but none may be returned twice and the count cannot go negative
+        assertEquals(dequeued.size, dequeued.toSet().size)
+        assertTrue(queue.count() >= 0, "Count was ${queue.count()}")
+    }
+
+    @Test
+    fun clearResetsPendingRecalculation() {
+        data class Item(val id: String, var priority: Int)
+
+        val queue = LazyPriorityQueue<Item>(10, compareByDescending { it.priority })
+        queue.enqueue(Item("a", 1))
+        queue.recalculatePriorities()
+        queue.clear()
+
+        val low = Item("low", 1)
+        val high = Item("high", 5)
+        queue.enqueue(low)
+        queue.enqueue(high)
+
+        assertEquals(listOf("high", "low"), queue.dequeue(2).map { it.id })
     }
 }

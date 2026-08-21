@@ -1,23 +1,23 @@
 package com.kylecorry.luna.collections
 
-import java.util.*
+import java.util.PriorityQueue
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
-/**
- * A priority queue which does not determine priority until dequeue time
- */
 class LazyPriorityQueue<T : Any>(initialCapacity: Int, comparator: Comparator<T>) {
     private val stagingQueue = ConcurrentLinkedQueue<T>()
     private val priorityQueue = PriorityQueue(initialCapacity, comparator)
     private val count = AtomicInteger(0)
     private val stagedCount = AtomicInteger(0)
+    private val priorityQueueLock = ReentrantLock()
 
     @Volatile
     private var prioritiesChanged = false
 
     /**
-     * Enqueue an item into the priority queue. This operation is thread safe.
+     * Enqueue an item into the priority queue.
      */
     fun enqueue(item: T) {
         stagingQueue.add(item)
@@ -34,11 +34,10 @@ class LazyPriorityQueue<T : Any>(initialCapacity: Int, comparator: Comparator<T>
 
     /**
      * Dequeue the highest priority items from the queue
-     * This is not thread safe
      */
-    fun dequeue(count: Int = 1): List<T> {
+    fun dequeue(count: Int = 1): List<T> = priorityQueueLock.withLock {
         // Read the staging queue
-        val stagedItems = (0..<stagedCount.get()).mapNotNull {
+        val stagedItems = (0 until stagedCount.get()).mapNotNull {
             val item = stagingQueue.poll()
             if (item != null) {
                 stagedCount.decrementAndGet()
@@ -59,7 +58,7 @@ class LazyPriorityQueue<T : Any>(initialCapacity: Int, comparator: Comparator<T>
         priorityQueue.addAll(stagedItems)
 
         // Dequeue
-        return (0..<count).mapNotNull {
+        return (0 until count).mapNotNull {
             val item = priorityQueue.poll()
             if (item != null) {
                 this.count.decrementAndGet()
@@ -70,13 +69,13 @@ class LazyPriorityQueue<T : Any>(initialCapacity: Int, comparator: Comparator<T>
 
     /**
      * Clear the queue
-     * This is not thread safe
      */
-    fun clear() {
+    fun clear() = priorityQueueLock.withLock {
         stagingQueue.clear()
         priorityQueue.clear()
         count.set(0)
         stagedCount.set(0)
+        prioritiesChanged = false
     }
 
     fun count(): Int {
