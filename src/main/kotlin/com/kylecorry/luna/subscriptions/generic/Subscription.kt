@@ -4,6 +4,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -12,6 +14,7 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 class Subscription<T>(
     replay: Int = 0,
@@ -31,11 +34,11 @@ class Subscription<T>(
 
     private val subscriptionFlow = sharedFlow
         .onStart { startSubscription() }
-        .onCompletion { stopSubscription() }
+        .onCompletion { withContext(NonCancellable) { stopSubscription() } }
 
-    private val scope = CoroutineScope(Dispatchers.Default)
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val jobLock = Any()
-    private var listeners: MutableMap<suspend (T) -> Unit, Job> = mutableMapOf()
+    private val listeners = mutableMapOf<suspend (T) -> Unit, Job>()
 
     override fun subscribe(listener: suspend (value: T) -> Unit) {
         subscribe(listener) { it }
@@ -74,15 +77,19 @@ class Subscription<T>(
 
     private suspend fun startSubscription() {
         startStopLock.withLock {
-            if (activeListeners == 0) {
+            val shouldStart = activeListeners == 0
+            activeListeners++
+            if (shouldStart) {
                 onStart()
             }
-            activeListeners++
         }
     }
 
     private suspend fun stopSubscription() {
         startStopLock.withLock {
+            if (activeListeners == 0) {
+                return
+            }
             activeListeners--
             if (activeListeners == 0) {
                 onStop()
