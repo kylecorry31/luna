@@ -10,7 +10,7 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.onCompletion
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -33,7 +33,7 @@ class Subscription<T>(
     )
 
     private val subscriptionFlow = sharedFlow
-        .onStart { startSubscription() }
+        .onSubscription { withContext(NonCancellable) { startSubscription() } }
         .onCompletion { withContext(NonCancellable) { stopSubscription() } }
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())

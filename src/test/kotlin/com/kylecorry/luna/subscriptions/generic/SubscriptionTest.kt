@@ -7,7 +7,9 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -103,15 +105,21 @@ class SubscriptionTest {
     }
 
     @Test
-    fun stopsIfCancelledWhileStarting() = runBlocking {
+    fun finishesStartingWhenCancelledWhileStarting() = runBlocking {
         val startCount = AtomicInteger(0)
+        val startCompleted = AtomicBoolean(false)
         val stopCount = AtomicInteger(0)
+        val startCompletedBeforeStop = AtomicBoolean(false)
         val subscription = Subscription<Int>(
             onStart = {
                 startCount.incrementAndGet()
-                delay(1000.milliseconds)
+                delay(200.milliseconds)
+                startCompleted.set(true)
             },
-            onStop = { stopCount.incrementAndGet() }
+            onStop = {
+                startCompletedBeforeStop.set(startCompleted.get())
+                stopCount.incrementAndGet()
+            }
         )
 
         subscription.subscribe { }
@@ -119,6 +127,26 @@ class SubscriptionTest {
         subscription.unsubscribeAll()
 
         waitUntil { stopCount.get() == 1 }
+        assertTrue(startCompletedBeforeStop.get())
+    }
+
+    @Test
+    fun receivesValuePublishedWhileStarting() = runBlocking {
+        val startCount = AtomicInteger(0)
+        val callCount = AtomicInteger(0)
+        val subscription = Subscription<Int>(
+            onStart = {
+                startCount.incrementAndGet()
+                delay(200.milliseconds)
+            }
+        )
+
+        subscription.subscribe { callCount.incrementAndGet() }
+        waitUntil { startCount.get() == 1 }
+
+        subscription.publish(1)
+
+        waitUntil { callCount.get() == 1 }
     }
 
     @Test
