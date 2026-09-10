@@ -163,6 +163,33 @@ class ListenerFlowWrapperTest {
     }
 
 
+    @Test
+    fun receivesEventsEmittedWhileStarting() = runBlocking {
+        val wrapper = EmitOnStartListenerFlowWrapper()
+        val values = mutableListOf<Int>()
+
+        val job = GlobalScope.launch {
+            wrapper.flow.collectLatest {
+                values.add(it)
+            }
+        }
+
+        wait()
+        job.cancel()
+        wait()
+
+        assertEquals(listOf(1), values)
+    }
+
+    private class EmitOnStartListenerFlowWrapper : ListenerFlowWrapper<Int>() {
+        override fun start() {
+            emit(1)
+        }
+
+        override fun stop() {
+        }
+    }
+
     private suspend fun wait() {
         delay(actionWaitTime)
     }

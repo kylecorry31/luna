@@ -3,7 +3,7 @@ package com.kylecorry.luna.concurrency
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.onCompletion
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.onSubscription
 
 /**
  * A wrapper for a flow around a listener (e.g. a sensor listener)
@@ -21,7 +21,7 @@ abstract class ListenerFlowWrapper<T>(replay: Boolean = false) : IFlowable<T> {
     )
 
     override val flow = _flow
-        .onStart { startListening() }
+        .onSubscription { startListening() }
         .onCompletion { stopListening() }
 
     private var activeListeners = 0
@@ -31,15 +31,19 @@ abstract class ListenerFlowWrapper<T>(replay: Boolean = false) : IFlowable<T> {
 
     private fun startListening() {
         synchronized(lock) {
-            if (activeListeners == 0) {
+            val shouldStart = activeListeners == 0
+            activeListeners++
+            if (shouldStart) {
                 start()
             }
-            activeListeners++
         }
     }
 
     private fun stopListening() {
         synchronized(lock) {
+            if (activeListeners == 0) {
+                return
+            }
             activeListeners--
             if (activeListeners == 0) {
                 stop()
