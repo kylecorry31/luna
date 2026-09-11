@@ -81,6 +81,63 @@ class FlowableTimerTest {
     }
 
     @Test
+    fun unregisterWhileRunningStopsListeningForTheDurationOfTheAction() = runBlocking {
+        val started = CompletableDeferred<Unit>()
+        val canFinish = CompletableDeferred<Unit>()
+        val topic = TestTopic()
+        val timer = FlowableTimer(topic, unregisterWhileRunning = true) {
+            started.complete(Unit)
+            canFinish.await()
+            runs.incrementAndGet()
+        }
+        try {
+            timer.interval(1000, 1000)
+            waitFor("timer did not subscribe") { topic.isSubscribed }
+            topic.publish()
+            assertNoMoreRuns(0)
+            topic.publish()
+            waitFor("action did not start") { started.isCompleted }
+            waitFor("timer kept listening while the action ran") { !topic.isSubscribed }
+
+            // Ticks during the action are lost rather than queued
+            repeat(3) { topic.publish() }
+            canFinish.complete(Unit)
+            awaitRuns(1)
+            waitFor("timer did not start listening again") { topic.isSubscribed }
+            topic.publish()
+            assertNoMoreRuns(1)
+            topic.publish()
+            awaitRuns(2)
+        } finally {
+            timer.stop()
+        }
+        waitFor("timer did not unsubscribe") { !topic.isSubscribed }
+    }
+
+    @Test
+    fun unregisterWhileRunningRequestsANewFlowableForEachAction() = runBlocking {
+        val timer = FlowableTimer(topics, unregisterWhileRunning = true) { runs.incrementAndGet() }
+        try {
+            timer.interval(1000, 1000)
+            val first = topics.awaitTopic()
+            first.publish()
+            assertNoMoreRuns(0)
+            first.publish()
+            awaitRuns(1)
+            waitFor("first topic was left subscribed") { !first.isSubscribed }
+
+            val second = topics.awaitTopic()
+            assertEquals(listOf(1000L, 1000L), topics.periods)
+            second.publish()
+            assertNoMoreRuns(1)
+            second.publish()
+            awaitRuns(2)
+        } finally {
+            timer.stop()
+        }
+    }
+
+    @Test
     fun theInitialDelayIsDrivenByItsOwnTopic() = runBlocking {
         val timer = timer()
         try {

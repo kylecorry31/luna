@@ -5,6 +5,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
@@ -15,10 +16,12 @@ import java.time.Duration
  * A timer driven by flowable emissions after an optional initial delay.
  *
  * @param flowableProvider a factory function for the flowable
+ * @param unregisterWhileRunning if true, the flowable is unsubscribed from while the action runs and resubscribed to once it finishes.
  * @param action the action to perform on each timer tick
  */
 class FlowableTimer(
     private val flowableProvider: (periodMillis: Long) -> IFlowable<*>,
+    private val unregisterWhileRunning: Boolean = false,
     private val action: suspend () -> Unit
 ) : ITimer {
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -29,8 +32,9 @@ class FlowableTimer(
 
     constructor(
         flowable: IFlowable<*>,
+        unregisterWhileRunning: Boolean = false,
         action: suspend () -> Unit
-    ) : this({ flowable }, action)
+    ) : this({ flowable }, unregisterWhileRunning, action)
 
     override fun interval(period: Duration, initialDelay: Duration) {
         interval(period.toMillis(), initialDelay.toMillis())
@@ -81,16 +85,18 @@ class FlowableTimer(
     }
 
     private suspend fun listen(rateMillis: Long, skipFirst: Boolean, stopAfterTick: Boolean) {
-        val flowable = flowableProvider(rateMillis)
-        var ticks = flowable.flow
-        if (skipFirst) {
-            ticks = ticks.drop(1)
-        }
-        if (stopAfterTick) {
-            ticks.first()
-            action()
+        if (stopAfterTick || unregisterWhileRunning) {
+            do {
+                ticks(rateMillis, skipFirst).first()
+                action()
+            } while (!stopAfterTick)
         } else {
-            ticks.conflate().collect { action() }
+            ticks(rateMillis, skipFirst).conflate().collect { action() }
         }
+    }
+
+    private fun ticks(rateMillis: Long, skipFirst: Boolean): Flow<*> {
+        val flow = flowableProvider(rateMillis).flow
+        return if (skipFirst) flow.drop(1) else flow
     }
 }
