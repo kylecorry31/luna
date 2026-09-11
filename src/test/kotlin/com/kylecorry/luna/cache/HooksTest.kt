@@ -4,8 +4,11 @@ import com.kylecorry.luna.hooks.Hooks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.time.Duration.Companion.milliseconds
 
 class HooksTest {
 
@@ -321,36 +324,35 @@ class HooksTest {
         hooks.startStateUpdates()
 
         state = 2
-        delay(delayTime)
+        delay(delayTime.milliseconds)
         assertEquals(1, count)
 
         // No change to state
         state = 2
-        delay(delayTime)
+        delay(delayTime.milliseconds)
         assertEquals(1, count)
 
         state = 1
-        delay(delayTime)
+        delay(delayTime.milliseconds)
         assertEquals(2, count)
 
         hooks.stopStateUpdates()
 
         // Updates are stopped
         state = 2
-        delay(delayTime)
+        delay(delayTime.milliseconds)
         assertEquals(2, count)
     }
 
     @Test
     fun stateThrottle() = runBlocking {
-        val delayTime = 100L
-        var count = 0
+        val count = AtomicInteger(0)
         val hooks = Hooks(
             stateDispatcher = Dispatchers.Default,
             stateThrottleMs = 50,
             stateTriggerOnStart = false
         ) {
-            count++
+            count.incrementAndGet()
         }
         var state by hooks.state(1)
 
@@ -358,14 +360,20 @@ class HooksTest {
 
         state = 1
         state = 3
-        delay(delayTime)
-        assertEquals(1, count)
+        waitUntil { count.get() == 1 }
 
         state = 2
-        delay(delayTime)
-        assertEquals(2, count)
+        waitUntil { count.get() == 2 }
 
         hooks.stopStateUpdates()
+    }
+
+    private suspend fun waitUntil(timeoutMs: Long = 1000, condition: () -> Boolean) {
+        withTimeout(timeoutMs.milliseconds) {
+            while (!condition()) {
+                delay(10.milliseconds)
+            }
+        }
     }
 
     @Test
@@ -382,7 +390,7 @@ class HooksTest {
 
         hooks.startStateUpdates()
 
-        delay(delayTime)
+        delay(delayTime.milliseconds)
         assertEquals(1, count)
 
         hooks.stopStateUpdates()
@@ -402,7 +410,7 @@ class HooksTest {
 
         hooks.startStateUpdates()
 
-        delay(delayTime)
+        delay(delayTime.milliseconds)
         assertEquals(0, count)
 
         hooks.stopStateUpdates()
