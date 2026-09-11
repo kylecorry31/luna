@@ -1,12 +1,17 @@
 package com.kylecorry.luna.topics
 
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 class TopicTest {
@@ -209,6 +214,38 @@ class TopicTest {
 
         assertEquals(2, count.get())
         assertEquals(listOf(1, 0), counts)
+    }
+
+    @Test
+    fun canReadWhenASubscriberPublishes() = runBlocking {
+        val topic = Topic()
+        val republished = AtomicBoolean(false)
+        topic.subscribe {
+            if (republished.compareAndSet(false, true)) {
+                topic.publish()
+            }
+            true
+        }
+
+        val read = async { topic.read() }
+        delay(50)
+        topic.publish()
+
+        withTimeout(1000) { read.await() }
+    }
+
+    @Test
+    fun canReadWhenPublishedConcurrently() = runBlocking {
+        repeat(100) {
+            val topic = Topic()
+            val read = async(Dispatchers.Default) { topic.read() }
+            delay(10)
+            val publishers = (0 until 4).map {
+                async(Dispatchers.Default) { topic.publish() }
+            }
+            publishers.awaitAll()
+            withTimeout(1000) { read.await() }
+        }
     }
 
     @Test

@@ -1,10 +1,15 @@
 package com.kylecorry.luna.topics.generic
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.*
+import java.util.concurrent.atomic.AtomicBoolean
 
 class TopicTest {
 
@@ -247,6 +252,39 @@ class TopicTest {
         topic.publish(3)
         assertEquals(3, count)
         assertEquals(6, value)
+    }
+
+    @Test
+    fun canReadWhenASubscriberPublishes() = runBlocking {
+        val topic = Topic<Int>()
+        val republished = AtomicBoolean(false)
+        topic.subscribe { value ->
+            if (republished.compareAndSet(false, true)) {
+                topic.publish(value + 1)
+            }
+            true
+        }
+
+        val read = async { topic.read() }
+        delay(50)
+        topic.publish(1)
+
+        // The re-entrant publish resumes the read first, and the outer publish must not resume it again
+        assertEquals(2, withTimeout(1000) { read.await() })
+    }
+
+    @Test
+    fun canReadWhenPublishedConcurrently() = runBlocking {
+        repeat(100) {
+            val topic = Topic<Int>()
+            val read = async(Dispatchers.Default) { topic.read() }
+            delay(10)
+            val publishers = (0 until 4).map { value ->
+                async(Dispatchers.Default) { topic.publish(value) }
+            }
+            publishers.awaitAll()
+            withTimeout(1000) { read.await() }
+        }
     }
 
     @Test

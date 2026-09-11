@@ -1,14 +1,10 @@
 package com.kylecorry.luna.topics
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import com.kylecorry.luna.concurrency.sharedCallbackFlow
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 
 class Topic(
@@ -42,18 +38,21 @@ class Topic(
     }
 
     override suspend fun read(isSatisfied: () -> Boolean) = suspendCancellableCoroutine { cont ->
+        val hasRead = AtomicBoolean(false)
         val callback: () -> Boolean = {
             if (isSatisfied()) {
-                cont.resume(Unit)
+                if (hasRead.compareAndSet(false, true)) {
+                    cont.resume(Unit)
+                }
                 false
             } else {
                 true
             }
         }
+        subscribe(callback)
         cont.invokeOnCancellation {
             unsubscribe(callback)
         }
-        subscribe(callback)
     }
 
     fun publish() {
@@ -63,16 +62,14 @@ class Topic(
         subs.filter { !it.invoke() }.forEach(::unsubscribe)
     }
 
-    private val externalScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-
-    override val flow: Flow<Unit> = callbackFlow {
+    override val flow: Flow<Unit> = sharedCallbackFlow {
         val subscription = {
             trySend(Unit)
             true
         }
         subscribe(subscription)
         awaitClose { unsubscribe(subscription) }
-    }.shareIn(externalScope, SharingStarted.WhileSubscribed(), 0)
+    }
 
     companion object {
 
