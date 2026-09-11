@@ -32,7 +32,7 @@ class Subscription<T>(
         onBufferOverflow = bufferOverflowBehavior
     )
 
-    private val subscriptionFlow = sharedFlow
+    override val flow: Flow<T> = sharedFlow
         .onSubscription { withContext(NonCancellable) { startSubscription() } }
         .onCompletion { withContext(NonCancellable) { stopSubscription() } }
 
@@ -59,7 +59,7 @@ class Subscription<T>(
         synchronized(jobLock) {
             listeners[key]?.cancel()
             listeners[key] = scope.launch(start = CoroutineStart.UNDISPATCHED) {
-                modifiers(subscriptionFlow).collect(listener)
+                modifiers(flow).collect(listener)
             }
         }
     }
@@ -84,8 +84,6 @@ class Subscription<T>(
     override fun publish(value: T) {
         sharedFlow.tryEmit(value)
     }
-
-    override fun flow(): Flow<T> = subscriptionFlow
 
     private suspend fun startSubscription() {
         startStopLock.withLock {

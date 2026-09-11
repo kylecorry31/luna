@@ -35,5 +35,6 @@ class Subscription(
 
     override fun publish() = subscription.publish(Unit)
 
-    override fun flow(): Flow<Unit> = subscription.flow()
+    override val flow: Flow<Unit>
+        get() = subscription.flow
 }
