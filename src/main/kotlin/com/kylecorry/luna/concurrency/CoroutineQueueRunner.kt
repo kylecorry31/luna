@@ -12,22 +12,27 @@ class CoroutineQueueRunner(
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
     private val dispatcher: CoroutineContext = Dispatchers.Default,
     private val ignoreExceptions: Boolean = false,
-    queuePolicy: BufferOverflow = BufferOverflow.DROP_LATEST
+    private val queuePolicy: BufferOverflow = BufferOverflow.DROP_LATEST
 ) {
-    private var taskChannel = Channel<suspend () -> Unit>(queueSize, queuePolicy)
+    private var taskChannel = newChannel()
     private var consumerJob: Job? = null
     private var isRunningTask = false
     private val mutex = Mutex()
     private val replaceMutex = Mutex()
+    private val consumerLock = Any()
 
     init {
-        launchConsumer()
+        synchronized(consumerLock) {
+            launchConsumer(taskChannel)
+        }
     }
 
-    private fun launchConsumer() {
+    private fun newChannel() = Channel<suspend () -> Unit>(queueSize, queuePolicy)
+
+    private fun launchConsumer(channel: Channel<suspend () -> Unit>) {
         consumerJob?.cancel() // cancel the existing consumer job
         consumerJob = scope.launch {
-            for (task in taskChannel) {
+            for (task in channel) {
                 try {
                     mutex.withLock { isRunningTask = true }
                     withContext(dispatcher) {
@@ -45,9 +50,7 @@ class CoroutineQueueRunner(
     }
 
     suspend fun enqueue(task: suspend () -> Unit): Boolean {
-        checkConsumer()
-        val result = taskChannel.trySend(task)
-        return result.isSuccess
+        return activeChannel().trySend(task).isSuccess
     }
 
     suspend fun replace(task: suspend () -> Unit) {
@@ -59,28 +62,34 @@ class CoroutineQueueRunner(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun skipIfRunning(task: suspend () -> Unit): Boolean {
-        checkConsumer()
-        val shouldEnqueue = mutex.withLock { !isRunningTask && taskChannel.isEmpty }
+        val channel = activeChannel()
+        val shouldEnqueue = mutex.withLock { !isRunningTask && channel.isEmpty }
         if (shouldEnqueue) {
-            enqueue(task)
+            channel.trySend(task)
         }
         return shouldEnqueue
     }
 
     suspend fun cancelAndJoin() {
-        consumerJob?.cancelAndJoin()
-        taskChannel.close()
+        val job = synchronized(consumerLock) { consumerJob }
+        job?.cancelAndJoin()
+        synchronized(consumerLock) { taskChannel.close() }
     }
 
     fun cancel() {
-        consumerJob?.cancel()
-        taskChannel.close()
+        synchronized(consumerLock) {
+            consumerJob?.cancel()
+            taskChannel.close()
+        }
     }
 
-    private fun checkConsumer() {
-        if (consumerJob?.isActive != true) {
-            taskChannel = Channel(queueSize)
-            launchConsumer()
+    private fun activeChannel(): Channel<suspend () -> Unit> {
+        return synchronized(consumerLock) {
+            if (consumerJob?.isActive != true) {
+                taskChannel = newChannel()
+                launchConsumer(taskChannel)
+            }
+            taskChannel
         }
     }
 }

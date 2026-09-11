@@ -1,9 +1,14 @@
 package com.kylecorry.luna.concurrency
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import java.util.concurrent.atomic.AtomicInteger
 
 class CoroutineQueueRunnerTest {
 
@@ -241,4 +246,39 @@ class CoroutineQueueRunnerTest {
         assertEquals(true, task2Complete)
     }
 
+
+    @Test
+    fun keepsTheQueuePolicyAfterTheConsumerRestarts() = runBlocking {
+        val runner = CoroutineQueueRunner(queueSize = 1, queuePolicy = BufferOverflow.DROP_LATEST)
+        runner.cancelAndJoin()
+
+        // The consumer is restarted by the first enqueue, which must not fall back to a suspending
+        // channel - a full queue drops the latest task instead of rejecting it.
+        assertEquals(true, runner.enqueue { delay(100) })
+        assertEquals(true, runner.enqueue { delay(100) })
+        assertEquals(true, runner.enqueue { delay(100) })
+
+        runner.cancelAndJoin()
+    }
+
+    @Test
+    fun doesNotLoseTasksWhenEnqueuedConcurrentlyAfterCancel() = runBlocking {
+        repeat(50) {
+            val runner = CoroutineQueueRunner(queueSize = 16)
+            runner.cancelAndJoin()
+
+            val completed = AtomicInteger(0)
+            // Every enqueue races to restart the consumer, and each accepted task must run on the
+            // channel its consumer is reading from.
+            (0 until 8).map {
+                async(Dispatchers.Default) {
+                    runner.enqueue { completed.incrementAndGet() }
+                }
+            }.awaitAll()
+
+            delay(100)
+            assertEquals(8, completed.get())
+            runner.cancelAndJoin()
+        }
+    }
 }
