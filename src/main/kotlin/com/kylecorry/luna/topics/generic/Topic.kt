@@ -1,7 +1,13 @@
 package com.kylecorry.luna.topics.generic
 
-import com.kylecorry.luna.concurrency.ListenerFlowWrapper
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.*
 import kotlin.coroutines.resume
@@ -59,20 +65,16 @@ class Topic<T : Any>(
         subs.filter { !it.invoke(value) }.forEach(::unsubscribe)
     }
 
-    override val flow: Flow<T> = object : ListenerFlowWrapper<T>() {
-        override fun start() {
-            subscribe(this::onUpdate)
-        }
+    private val externalScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
-        override fun stop() {
-            unsubscribe(this::onUpdate)
+    override val flow: Flow<T> = callbackFlow {
+        val subscription: Subscriber<T> = { value ->
+            trySend(value)
+            true
         }
-
-        private fun onUpdate(value: T): Boolean {
-            emit(value)
-            return true
-        }
-    }.flow
+        subscribe(subscription)
+        awaitClose { unsubscribe(subscription) }
+    }.shareIn(externalScope, SharingStarted.WhileSubscribed(), 0)
 
     companion object {
 
