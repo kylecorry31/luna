@@ -4,10 +4,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -15,10 +17,18 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class SubscriptionTest {
 
+    private val subscriptions = mutableListOf<ISubscription>()
+
+    @AfterEach
+    fun cleanUp() {
+        subscriptions.forEach { it.unsubscribeAll() }
+    }
+
+
     @Test
     fun receivesEventPublishedImmediatelyAfterSubscribing() = runBlocking {
         val callCount = AtomicInteger(0)
-        val subscription = Subscription()
+        val subscription = Subscription().also { subscriptions.add(it) }
 
         subscription.subscribe { callCount.incrementAndGet() }
         subscription.publish()
@@ -30,7 +40,7 @@ class SubscriptionTest {
     fun canPublish() = runBlocking {
         val startCount = AtomicInteger(0)
         val callCount = AtomicInteger(0)
-        val subscription = Subscription(onStart = { startCount.incrementAndGet() })
+        val subscription = Subscription(onStart = { startCount.incrementAndGet() }).also { subscriptions.add(it) }
 
         val listener: suspend () -> Unit = {
             callCount.incrementAndGet()
@@ -49,7 +59,7 @@ class SubscriptionTest {
         val callCount = AtomicInteger(0)
         val subscription = Subscription(
             onStart = { startCount.incrementAndGet() }
-        )
+        ).also { subscriptions.add(it) }
 
         val listener1: suspend () -> Unit = {
             callCount.incrementAndGet()
@@ -83,7 +93,7 @@ class SubscriptionTest {
         val subscription = Subscription(
             onStart = { startCount.incrementAndGet() },
             onStop = { stopCount.incrementAndGet() }
-        )
+        ).also { subscriptions.add(it) }
         val listener1: suspend () -> Unit = {}
         val listener2: suspend () -> Unit = {}
 
@@ -119,7 +129,7 @@ class SubscriptionTest {
                 startCompletedBeforeStop.set(startCompleted.get())
                 stopCount.incrementAndGet()
             }
-        )
+        ).also { subscriptions.add(it) }
 
         subscription.subscribe { }
         waitUntil { startCount.get() == 1 }
@@ -138,7 +148,7 @@ class SubscriptionTest {
                 startCount.incrementAndGet()
                 delay(200.milliseconds)
             }
-        )
+        ).also { subscriptions.add(it) }
 
         subscription.subscribe { callCount.incrementAndGet() }
         waitUntil { startCount.get() == 1 }
@@ -155,7 +165,7 @@ class SubscriptionTest {
         val subscription = Subscription(
             onStart = { startCount.incrementAndGet() },
             onStop = { stopCount.incrementAndGet() }
-        )
+        ).also { subscriptions.add(it) }
 
         coroutineScope {
             repeat(100) { worker ->
@@ -178,7 +188,7 @@ class SubscriptionTest {
     fun canApplyModifiers() = runBlocking {
         val startCount = AtomicInteger(0)
         val callCount = AtomicInteger(0)
-        val subscription = Subscription(onStart = { startCount.incrementAndGet() })
+        val subscription = Subscription(onStart = { startCount.incrementAndGet() }).also { subscriptions.add(it) }
 
         val listener: suspend () -> Unit = {
             callCount.incrementAndGet()
@@ -199,7 +209,7 @@ class SubscriptionTest {
     @Test
     fun listenerFailuresDoNotStopOtherListeners() = runBlocking {
         val callCount = AtomicInteger(0)
-        val subscription = Subscription()
+        val subscription = Subscription().also { subscriptions.add(it) }
 
         subscription.subscribe { throw RuntimeException("Listener failed") }
         subscription.subscribe { callCount.incrementAndGet() }
@@ -209,6 +219,22 @@ class SubscriptionTest {
 
         subscription.publish()
         waitUntil { callCount.get() == 2 }
+    }
+
+    @Test
+    fun subscribingTheSameListenerReplacesItsPreviousCollection() = runBlocking {
+        val subscription = Subscription().also { subscriptions.add(it) }
+        val calls = AtomicInteger()
+        val completions = AtomicInteger()
+        val listener: suspend () -> Unit = { calls.incrementAndGet() }
+
+        subscription.subscribe(listener) { it.onCompletion { completions.incrementAndGet() } }
+        subscription.subscribe(listener) { it.onCompletion { completions.incrementAndGet() } }
+        subscription.publish()
+        waitUntil { calls.get() >= 1 }
+        subscription.unsubscribe(listener)
+        waitUntil { completions.get() == 2 }
+        assertEquals(1, calls.get())
     }
 
     private suspend fun waitUntil(timeoutMs: Long = 1000, condition: () -> Boolean) {

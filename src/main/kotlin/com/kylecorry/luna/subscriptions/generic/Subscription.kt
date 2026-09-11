@@ -38,7 +38,7 @@ class Subscription<T>(
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val jobLock = Any()
-    private val listeners = mutableMapOf<suspend (T) -> Unit, Job>()
+    private val listeners = mutableMapOf<Any, Job>()
 
     override fun subscribe(listener: suspend (value: T) -> Unit) {
         subscribe(listener) { it }
@@ -48,17 +48,29 @@ class Subscription<T>(
         listener: suspend (value: T) -> Unit,
         modifiers: (Flow<T>) -> Flow<T>
     ) {
+        subscribeListener(listener, listener, modifiers)
+    }
+
+    internal fun subscribeListener(
+        key: Any,
+        listener: suspend (T) -> Unit,
+        modifiers: (Flow<T>) -> Flow<T>
+    ) {
         synchronized(jobLock) {
-            listeners[listener]?.cancel()
-            listeners[listener] = scope.launch(start = CoroutineStart.UNDISPATCHED) {
-                modifiers(subscriptionFlow).collect { listener(it) }
+            listeners[key]?.cancel()
+            listeners[key] = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                modifiers(subscriptionFlow).collect(listener)
             }
         }
     }
 
     override fun unsubscribe(listener: suspend (value: T) -> Unit) {
+        unsubscribeListener(listener)
+    }
+
+    internal fun unsubscribeListener(key: Any) {
         synchronized(jobLock) {
-            listeners.remove(listener)?.cancel()
+            listeners.remove(key)?.cancel()
         }
     }
 
