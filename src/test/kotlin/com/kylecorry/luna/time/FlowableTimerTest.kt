@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.fail
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.time.Duration.Companion.milliseconds
 
 class FlowableTimerTest {
 
@@ -69,7 +70,8 @@ class FlowableTimerTest {
             assertTrue(topic.isSubscribed)
 
             repeat(10) { topic.publish() }
-            assertEquals(0, runs.get())
+            // Let the asynchronous topic flow deliver the burst while the action is blocked.
+            assertNoMoreRuns(0)
             canFinish.complete(Unit)
             awaitRuns(2)
             assertNoMoreRuns(2)
@@ -139,7 +141,7 @@ class FlowableTimerTest {
             topic.publish()
             waitFor("one-shot timer kept running") { !timer.isRunning() }
             awaitRuns(1)
-            assertFalse(topic.isSubscribed)
+            waitFor("one-shot timer did not unsubscribe") { !topic.isSubscribed }
 
             repeat(3) { topic.publish() }
             assertNoMoreRuns(1)
@@ -283,7 +285,7 @@ class FlowableTimerTest {
     }
 
     private suspend fun assertNoMoreRuns(expected: Int) {
-        delay(50)
+        delay(50.milliseconds)
         assertEquals(expected, runs.get())
     }
 
@@ -326,9 +328,9 @@ class FlowableTimerTest {
 }
 
 private suspend fun waitFor(message: String, condition: () -> Boolean) {
-    withTimeoutOrNull(2000) {
+    withTimeoutOrNull(2000.milliseconds) {
         while (!condition()) {
-            delay(1)
+            delay(1.milliseconds)
         }
     } ?: fail(message)
 }
