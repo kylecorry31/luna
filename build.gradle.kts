@@ -4,7 +4,7 @@ plugins {
     id("com.vanniktech.maven.publish") version "0.34.0"
 }
 
-val versionName = "2.4.0"
+val versionName = "2.4.1"
 
 group = "com.kylecorry"
 version = versionName
