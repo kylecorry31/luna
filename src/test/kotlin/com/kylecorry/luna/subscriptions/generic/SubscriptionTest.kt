@@ -142,6 +142,94 @@ class SubscriptionTest {
     }
 
     @Test
+    fun unsubscribeDuringOnStartCancelsTheListener() = runBlocking {
+        val startCount = AtomicInteger(0)
+        val stopCount = AtomicInteger(0)
+        val callCount = AtomicInteger(0)
+        val listener: suspend (Int) -> Unit = { callCount.incrementAndGet() }
+        lateinit var subscription: Subscription<Int>
+        subscription = Subscription<Int>(
+            onStart = {
+                startCount.incrementAndGet()
+                subscription.unsubscribe(listener)
+            },
+            onStop = { stopCount.incrementAndGet() }
+        ).also { subscriptions.add(it) }
+
+        subscription.subscribe(listener)
+
+        waitUntil { stopCount.get() == 1 }
+        subscription.publish(1)
+        delay(50.milliseconds)
+
+        assertEquals(1, startCount.get())
+        assertEquals(1, stopCount.get())
+        assertEquals(0, callCount.get())
+    }
+
+    @Test
+    fun unsubscribeAllDuringOnStartCancelsTheListener() = runBlocking {
+        val startCount = AtomicInteger(0)
+        val stopCount = AtomicInteger(0)
+        val callCount = AtomicInteger(0)
+        lateinit var subscription: Subscription<Int>
+        subscription = Subscription<Int>(
+            onStart = {
+                startCount.incrementAndGet()
+                subscription.unsubscribeAll()
+            },
+            onStop = { stopCount.incrementAndGet() }
+        ).also { subscriptions.add(it) }
+
+        subscription.subscribe { callCount.incrementAndGet() }
+
+        waitUntil { stopCount.get() == 1 }
+        subscription.publish(1)
+        delay(50.milliseconds)
+
+        assertEquals(1, startCount.get())
+        assertEquals(1, stopCount.get())
+        assertEquals(0, callCount.get())
+    }
+
+    @Test
+    fun replacingListenerDuringOnStartKeepsTheNewRegistrationActive() = runBlocking {
+        val startCount = AtomicInteger(0)
+        val stopCount = AtomicInteger(0)
+        val callCount = AtomicInteger(0)
+        val replacementRequested = AtomicBoolean(false)
+        val listener: suspend (Int) -> Unit = { callCount.incrementAndGet() }
+        lateinit var subscription: Subscription<Int>
+        subscription = Subscription<Int>(
+            onStart = {
+                if (replacementRequested.compareAndSet(false, true)) {
+                    subscription.subscribe(listener)
+                }
+                startCount.incrementAndGet()
+            },
+            onStop = { stopCount.incrementAndGet() }
+        ).also { subscriptions.add(it) }
+
+        subscription.subscribe(listener)
+
+        waitUntil { replacementRequested.get() }
+        waitUntil {
+            subscription.publish(1)
+            callCount.get() >= 1
+        }
+        subscription.unsubscribe(listener)
+        waitUntil { stopCount.get() == 1 }
+        val callsAfterUnsubscribe = callCount.get()
+        subscription.publish(2)
+        delay(50.milliseconds)
+
+        assertEquals(1, startCount.get())
+        assertEquals(startCount.get(), stopCount.get())
+        assertTrue(callsAfterUnsubscribe >= 1)
+        assertEquals(callsAfterUnsubscribe, callCount.get())
+    }
+
+    @Test
     fun receivesValuePublishedWhileStarting() = runBlocking {
         val startCount = AtomicInteger(0)
         val callCount = AtomicInteger(0)

@@ -38,7 +38,12 @@ class Subscription<T>(
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val jobLock = Any()
-    private val listeners = mutableMapOf<Any, Job>()
+    private class ListenerEntry {
+        var job: Job? = null
+        var cancelled = false
+    }
+
+    private val listeners = mutableMapOf<Any, ListenerEntry>()
 
     override fun subscribe(listener: suspend (value: T) -> Unit) {
         subscribe(listener) { it }
@@ -56,10 +61,21 @@ class Subscription<T>(
         listener: suspend (T) -> Unit,
         modifiers: (Flow<T>) -> Flow<T>
     ) {
+        val entry = ListenerEntry()
         synchronized(jobLock) {
-            listeners[key]?.cancel()
-            listeners[key] = scope.launch(start = CoroutineStart.UNDISPATCHED) {
-                modifiers(flow).collect(listener)
+            listeners.put(key, entry)?.let(::cancelEntry)
+        }
+
+        val job = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            modifiers(flow).collect(listener)
+        }
+
+        synchronized(jobLock) {
+            if (listeners[key] === entry && !entry.cancelled) {
+                entry.job = job
+            } else {
+                entry.cancelled = true
+                job.cancel()
             }
         }
     }
@@ -70,15 +86,21 @@ class Subscription<T>(
 
     internal fun unsubscribeListener(key: Any) {
         synchronized(jobLock) {
-            listeners.remove(key)?.cancel()
+            listeners.remove(key)?.let(::cancelEntry)
         }
     }
 
     override fun unsubscribeAll() {
         synchronized(jobLock) {
-            listeners.values.forEach { it.cancel() }
+            val entries = listeners.values.toList()
             listeners.clear()
+            entries.forEach(::cancelEntry)
         }
+    }
+
+    private fun cancelEntry(entry: ListenerEntry) {
+        entry.cancelled = true
+        entry.job?.cancel()
     }
 
     override fun publish(value: T) {
