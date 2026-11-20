@@ -9,7 +9,7 @@ plugins {
     id("maven-publish")
 }
 
-val versionName = "2.4.1"
+val versionName = "2.4.2"
 
 group = "com.kylecorry"
 version = versionName
