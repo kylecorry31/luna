@@ -2,10 +2,14 @@
 A library of useful Kotlin utilities.
 
 ## Installation (Gradle)
-Available on maven central.
+Available on [JitPack](https://jitpack.io/#kylecorry31/luna).
 
 ```gradle
+repositories {
+    maven { url 'https://jitpack.io' }
+}
+
 dependencies {
-    implementation 'com.kylecorry:luna:<version>'
+    implementation 'com.github.kylecorry31:luna:<version>'
 }
 ```
